@@ -66,6 +66,12 @@ public class LlmService : ILlmService
     {
         var backends = SelectBackends(request.PreferredBackend);
 
+        // Handle Simultaneous strategy - call all backends in parallel
+        if (_settings.SelectionStrategy == BackendSelectionStrategy.Simultaneous && backends.Count > 1)
+        {
+            return await CompleteSimultaneousAsync(request, backends, cancellationToken);
+        }
+
         foreach (var backend in backends)
         {
             var stats = _statistics[backend.Name];
@@ -124,6 +130,12 @@ public class LlmService : ILlmService
         CancellationToken cancellationToken = default)
     {
         var backends = SelectBackends(request.PreferredBackend);
+
+        // Handle Simultaneous strategy - call all backends in parallel
+        if (_settings.SelectionStrategy == BackendSelectionStrategy.Simultaneous && backends.Count > 1)
+        {
+            return await ChatSimultaneousAsync(request, backends, cancellationToken);
+        }
 
         foreach (var backend in backends)
         {
@@ -252,8 +264,168 @@ public class LlmService : ILlmService
                 _backends[Random.Shared.Next(_backends.Count)]
             },
 
+            BackendSelectionStrategy.Simultaneous => _backends.ToList(),
+
             _ => _backends
         };
+    }
+
+    /// <summary>
+    /// Call multiple backends simultaneously and return all responses
+    /// </summary>
+    private async Task<LlmResponse> CompleteSimultaneousAsync(
+        LlmRequest request,
+        List<ILlmBackend> backends,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Executing simultaneous completion across {Count} backends",
+            backends.Count);
+
+        // Call all backends in parallel
+        var tasks = backends.Select(async backend =>
+        {
+            var stats = _statistics[backend.Name];
+            stats.TotalRequests++;
+            stats.LastUsed = DateTime.UtcNow;
+
+            try
+            {
+                var response = await _retryPolicy.ExecuteAsync(async () =>
+                    await backend.CompleteAsync(request, cancellationToken));
+
+                if (response.Success)
+                {
+                    stats.SuccessfulRequests++;
+                    UpdateAverageResponseTime(stats, response.DurationMs);
+                }
+                else
+                {
+                    stats.FailedRequests++;
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                stats.FailedRequests++;
+                _logger.LogError(ex, "[{Backend}] Exception during simultaneous request", backend.Name);
+
+                return new LlmResponse
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    Backend = backend.Name,
+                    Exception = ex
+                };
+            }
+        }).ToList();
+
+        var responses = await Task.WhenAll(tasks);
+
+        // Find the first successful response to use as primary
+        var primaryResponse = responses.FirstOrDefault(r => r.Success);
+        if (primaryResponse == null)
+        {
+            // All failed - return first response with all others as alternatives
+            return new LlmResponse
+            {
+                Success = false,
+                ErrorMessage = "All backends failed",
+                AlternativeResponses = responses.Skip(1).ToList()
+            };
+        }
+
+        // Add all other responses (successful or not) as alternatives
+        primaryResponse.AlternativeResponses = responses
+            .Where(r => r != primaryResponse)
+            .ToList();
+
+        _logger.LogInformation(
+            "Simultaneous completion completed: {SuccessCount}/{TotalCount} successful",
+            responses.Count(r => r.Success),
+            responses.Length);
+
+        return primaryResponse;
+    }
+
+    /// <summary>
+    /// Call multiple backends simultaneously for chat and return all responses
+    /// </summary>
+    private async Task<LlmResponse> ChatSimultaneousAsync(
+        ChatRequest request,
+        List<ILlmBackend> backends,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Executing simultaneous chat across {Count} backends",
+            backends.Count);
+
+        // Call all backends in parallel
+        var tasks = backends.Select(async backend =>
+        {
+            var stats = _statistics[backend.Name];
+            stats.TotalRequests++;
+            stats.LastUsed = DateTime.UtcNow;
+
+            try
+            {
+                var response = await _retryPolicy.ExecuteAsync(async () =>
+                    await backend.ChatAsync(request, cancellationToken));
+
+                if (response.Success)
+                {
+                    stats.SuccessfulRequests++;
+                    UpdateAverageResponseTime(stats, response.DurationMs);
+                }
+                else
+                {
+                    stats.FailedRequests++;
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                stats.FailedRequests++;
+                _logger.LogError(ex, "[{Backend}] Exception during simultaneous chat", backend.Name);
+
+                return new LlmResponse
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    Backend = backend.Name,
+                    Exception = ex
+                };
+            }
+        }).ToList();
+
+        var responses = await Task.WhenAll(tasks);
+
+        // Find the first successful response to use as primary
+        var primaryResponse = responses.FirstOrDefault(r => r.Success);
+        if (primaryResponse == null)
+        {
+            // All failed - return first response with all others as alternatives
+            return new LlmResponse
+            {
+                Success = false,
+                ErrorMessage = "All backends failed",
+                AlternativeResponses = responses.Skip(1).ToList()
+            };
+        }
+
+        // Add all other responses (successful or not) as alternatives
+        primaryResponse.AlternativeResponses = responses
+            .Where(r => r != primaryResponse)
+            .ToList();
+
+        _logger.LogInformation(
+            "Simultaneous chat completed: {SuccessCount}/{TotalCount} successful",
+            responses.Count(r => r.Success),
+            responses.Length);
+
+        return primaryResponse;
     }
 
     private void UpdateAverageResponseTime(BackendStatistics stats, long durationMs)

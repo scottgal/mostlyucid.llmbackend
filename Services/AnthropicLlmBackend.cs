@@ -20,8 +20,9 @@ public class AnthropicLlmBackend : BaseLlmBackend
     public AnthropicLlmBackend(
         LlmBackendConfig config,
         ILogger<AnthropicLlmBackend> logger,
-        HttpClient httpClient)
-        : base(config, logger, httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null)
+        : base(config, logger, httpClient, telemetry)
     {
         ConfigureHttpClient();
     }

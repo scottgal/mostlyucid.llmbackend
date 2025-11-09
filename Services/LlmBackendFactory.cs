@@ -12,15 +12,18 @@ public class LlmBackendFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly LlmPluginLoader? _pluginLoader;
+    private readonly TelemetryConfig? _telemetry;
 
     public LlmBackendFactory(
         ILoggerFactory loggerFactory,
         IHttpClientFactory httpClientFactory,
-        LlmPluginLoader? pluginLoader = null)
+        LlmPluginLoader? pluginLoader = null,
+        TelemetryConfig? telemetry = null)
     {
         _loggerFactory = loggerFactory;
         _httpClientFactory = httpClientFactory;
         _pluginLoader = pluginLoader;
+        _telemetry = telemetry;
     }
 
     public ILlmBackend CreateBackend(LlmBackendConfig config)
@@ -48,43 +51,50 @@ public class LlmBackendFactory
                 new OpenAILlmBackend(
                     config,
                     _loggerFactory.CreateLogger<OpenAILlmBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             LlmBackendType.AzureOpenAI =>
                 new AzureOpenAILlmBackend(
                     config,
                     _loggerFactory.CreateLogger<AzureOpenAILlmBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             LlmBackendType.Ollama or LlmBackendType.LMStudio =>
                 new OllamaLlmBackend(
                     config,
                     _loggerFactory.CreateLogger<OllamaLlmBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             LlmBackendType.EasyNMT =>
                 new EasyNMTBackend(
                     config,
                     _loggerFactory.CreateLogger<EasyNMTBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             LlmBackendType.Anthropic =>
                 new AnthropicLlmBackend(
                     config,
                     _loggerFactory.CreateLogger<AnthropicLlmBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             LlmBackendType.Gemini =>
                 new GeminiLlmBackend(
                     config,
                     _loggerFactory.CreateLogger<GeminiLlmBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             LlmBackendType.Cohere =>
                 new CohereLlmBackend(
                     config,
                     _loggerFactory.CreateLogger<CohereLlmBackend>(),
-                    httpClient),
+                    httpClient,
+                    _telemetry),
 
             _ => throw new NotSupportedException($"Backend type {config.Type} is not supported. " +
                 $"If this is a plugin backend, ensure CustomBackendType is set and the plugin is loaded.")

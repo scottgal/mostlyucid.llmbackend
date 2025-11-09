@@ -15,7 +15,8 @@ public class AzureOpenAILlmBackend : BaseLlmBackend
     public AzureOpenAILlmBackend(
         LlmBackendConfig config,
         ILogger<AzureOpenAILlmBackend> logger,
-        HttpClient httpClient) : base(config, logger, httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null) : base(config, logger, httpClient, telemetry)
     {
     }
 

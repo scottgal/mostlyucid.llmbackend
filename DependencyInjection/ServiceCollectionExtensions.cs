@@ -84,8 +84,9 @@ public static class ServiceCollectionExtensions
             var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
             var httpClientFactory = sp.GetRequiredService<System.Net.Http.IHttpClientFactory>();
             var pluginLoader = sp.GetRequiredService<LlmPluginLoader>();
+            var settings = configuration.GetSection(sectionName).Get<LlmSettings>();
 
-            return new LlmBackendFactory(loggerFactory, httpClientFactory, pluginLoader);
+            return new LlmBackendFactory(loggerFactory, httpClientFactory, pluginLoader, settings?.Telemetry);
         });
 
         // Register context memory
