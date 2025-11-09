@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Mostlyucid.LlmBackend.Configuration;
 using Mostlyucid.LlmBackend.Interfaces;
 using Mostlyucid.LlmBackend.Services;
@@ -28,7 +29,7 @@ public static class ServiceCollectionExtensions
         // Register plugin loader
         services.AddSingleton<LlmPluginLoader>(sp =>
         {
-            var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<LlmPluginLoader>();
             var pluginLoader = new LlmPluginLoader(logger);
 

@@ -33,9 +33,9 @@ public class CohereLlmBackend : BaseLlmBackend
         base.ConfigureHttpClient();
 
         // Add Cohere API key header
-        if (!string.IsNullOrEmpty(_config.ApiKey))
+        if (!string.IsNullOrEmpty(Config.ApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {Config.ApiKey}");
         }
     }
 
@@ -44,12 +44,12 @@ public class CohereLlmBackend : BaseLlmBackend
         try
         {
             // Try to check models endpoint
-            var response = await _httpClient.GetAsync("/v1/models", cancellationToken);
+            var response = await HttpClient.GetAsync("/v1/models", cancellationToken);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Cohere backend {BackendName} is not available", Name);
+            Logger.LogWarning(ex, "Cohere backend {BackendName} is not available", Name);
             return false;
         }
     }
