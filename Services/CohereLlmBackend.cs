@@ -64,15 +64,15 @@ public class CohereLlmBackend : BaseLlmBackend
         {
             var cohereRequest = new
             {
-                model = _config.ModelName ?? DefaultModel,
+                model = Config.ModelName ?? DefaultModel,
                 prompt = request.Prompt,
-                max_tokens = request.MaxTokens ?? _config.MaxOutputTokens ?? 2000,
-                temperature = request.Temperature ?? _config.Temperature ?? 0.7,
-                p = request.TopP ?? _config.TopP,
-                frequency_penalty = request.FrequencyPenalty ?? _config.FrequencyPenalty,
-                presence_penalty = request.PresencePenalty ?? _config.PresencePenalty,
-                stop_sequences = request.Stop ?? _config.StopSequences,
-                stream = request.Stream && _config.EnableStreaming
+                max_tokens = request.MaxTokens ?? Config.MaxOutputTokens ?? 2000,
+                temperature = request.Temperature ?? Config.Temperature ?? 0.7,
+                p = request.TopP ?? Config.TopP,
+                frequency_penalty = request.FrequencyPenalty ?? Config.FrequencyPenalty,
+                presence_penalty = request.PresencePenalty ?? Config.PresencePenalty,
+                stop_sequences = request.Stop ?? Config.StopSequences,
+                stream = request.Stream && Config.EnableStreaming
             };
 
             var json = JsonSerializer.Serialize(cohereRequest, new JsonSerializerOptions
@@ -81,14 +81,14 @@ public class CohereLlmBackend : BaseLlmBackend
             });
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync("/v1/generate", content, cancellationToken);
+            var response = await HttpClient.PostAsync("/v1/generate", content, cancellationToken);
 
             stopwatch.Stop();
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError(
+                Logger.LogError(
                     "Cohere request failed with status {StatusCode}: {Error}",
                     response.StatusCode,
                     errorContent);
@@ -114,7 +114,7 @@ public class CohereLlmBackend : BaseLlmBackend
                 BackendUsed = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = _config.ModelName ?? DefaultModel,
+                ModelUsed = Config.ModelName ?? DefaultModel,
                 PromptTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0,
                 CompletionTokens = cohereResponse.Meta?.BilledUnits?.OutputTokens ?? 0,
                 TotalTokens = (cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0) +
@@ -125,7 +125,7 @@ public class CohereLlmBackend : BaseLlmBackend
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Error calling Cohere backend {BackendName}", Name);
+            Logger.LogError(ex, "Error calling Cohere backend {BackendName}", Name);
             RecordFailure(ex.Message);
             return CreateErrorResponse("Exception", ex.Message);
         }
@@ -157,16 +157,16 @@ public class CohereLlmBackend : BaseLlmBackend
 
             var cohereRequest = new
             {
-                model = _config.ModelName ?? DefaultModel,
+                model = Config.ModelName ?? DefaultModel,
                 message = lastMessage.Content,
                 chat_history = chatHistory.Any() ? chatHistory : null,
-                max_tokens = request.MaxTokens ?? _config.MaxOutputTokens ?? 2000,
-                temperature = request.Temperature ?? _config.Temperature ?? 0.7,
-                p = request.TopP ?? _config.TopP,
-                frequency_penalty = request.FrequencyPenalty ?? _config.FrequencyPenalty,
-                presence_penalty = request.PresencePenalty ?? _config.PresencePenalty,
-                stop_sequences = request.Stop ?? _config.StopSequences,
-                stream = request.Stream && _config.EnableStreaming
+                max_tokens = request.MaxTokens ?? Config.MaxOutputTokens ?? 2000,
+                temperature = request.Temperature ?? Config.Temperature ?? 0.7,
+                p = request.TopP ?? Config.TopP,
+                frequency_penalty = request.FrequencyPenalty ?? Config.FrequencyPenalty,
+                presence_penalty = request.PresencePenalty ?? Config.PresencePenalty,
+                stop_sequences = request.Stop ?? Config.StopSequences,
+                stream = request.Stream && Config.EnableStreaming
             };
 
             var json = JsonSerializer.Serialize(cohereRequest, new JsonSerializerOptions
@@ -175,14 +175,14 @@ public class CohereLlmBackend : BaseLlmBackend
             });
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync("/v1/chat", content, cancellationToken);
+            var response = await HttpClient.PostAsync("/v1/chat", content, cancellationToken);
 
             stopwatch.Stop();
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError(
+                Logger.LogError(
                     "Cohere chat request failed with status {StatusCode}: {Error}",
                     response.StatusCode,
                     errorContent);
@@ -208,7 +208,7 @@ public class CohereLlmBackend : BaseLlmBackend
                 BackendUsed = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = _config.ModelName ?? DefaultModel,
+                ModelUsed = Config.ModelName ?? DefaultModel,
                 PromptTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0,
                 CompletionTokens = cohereResponse.Meta?.BilledUnits?.OutputTokens ?? 0,
                 TotalTokens = (cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0) +
@@ -219,7 +219,7 @@ public class CohereLlmBackend : BaseLlmBackend
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Error calling Cohere chat backend {BackendName}", Name);
+            Logger.LogError(ex, "Error calling Cohere chat backend {BackendName}", Name);
             RecordFailure(ex.Message);
             return CreateErrorResponse("Exception", ex.Message);
         }
