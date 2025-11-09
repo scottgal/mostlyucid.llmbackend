@@ -634,6 +634,83 @@ public class LlmBackendConfig
     /// Cost per 1M output tokens (for cost tracking)
     /// </summary>
     public decimal? CostPerMillionOutputTokens { get; set; }
+
+    /// <summary>
+    /// Maximum spend limit in USD for this backend
+    /// </summary>
+    /// <remarks>
+    /// When the accumulated spend for the current period exceeds this limit,
+    /// the backend will be automatically disabled until the next reset period.
+    /// Set to null for unlimited spend.
+    /// Requires CostPerMillionInputTokens and CostPerMillionOutputTokens to be configured.
+    /// </remarks>
+    /// <example>10.00m</example>
+    public decimal? MaxSpendUsd { get; set; }
+
+    /// <summary>
+    /// How often to reset the spend counter
+    /// </summary>
+    /// <remarks>
+    /// - Daily: Resets at midnight UTC
+    /// - Weekly: Resets on configured SpendResetDayOfWeek at midnight UTC
+    /// - Monthly: Resets on configured SpendResetDayOfMonth at midnight UTC
+    /// - Never: Manual reset only (via API or restart)
+    /// </remarks>
+    public SpendResetPeriod SpendResetPeriod { get; set; } = SpendResetPeriod.Monthly;
+
+    /// <summary>
+    /// Day of week for weekly spend reset (0 = Sunday, 6 = Saturday)
+    /// </summary>
+    /// <remarks>
+    /// Only used when SpendResetPeriod = Weekly.
+    /// Defaults to Monday (DayOfWeek.Monday = 1).
+    /// </remarks>
+    public DayOfWeek SpendResetDayOfWeek { get; set; } = DayOfWeek.Monday;
+
+    /// <summary>
+    /// Day of month for monthly spend reset (1-31)
+    /// </summary>
+    /// <remarks>
+    /// Only used when SpendResetPeriod = Monthly.
+    /// If day doesn't exist in a month (e.g., 31st in February), resets on last day of that month.
+    /// Defaults to 1 (first day of month).
+    /// </remarks>
+    public int SpendResetDayOfMonth { get; set; } = 1;
+
+    /// <summary>
+    /// Whether to log when backend is disabled due to budget limits
+    /// </summary>
+    /// <remarks>
+    /// When true, logs a warning when a backend is disabled due to exceeding MaxSpendUsd.
+    /// Defaults to true for visibility into cost controls.
+    /// </remarks>
+    public bool LogBudgetExceeded { get; set; } = true;
+}
+
+/// <summary>
+/// Spend reset period for budget limits
+/// </summary>
+public enum SpendResetPeriod
+{
+    /// <summary>
+    /// Reset spend counter daily at midnight UTC
+    /// </summary>
+    Daily,
+
+    /// <summary>
+    /// Reset spend counter weekly on configured day at midnight UTC
+    /// </summary>
+    Weekly,
+
+    /// <summary>
+    /// Reset spend counter monthly on configured day at midnight UTC
+    /// </summary>
+    Monthly,
+
+    /// <summary>
+    /// Never reset automatically (manual reset only)
+    /// </summary>
+    Never
 }
 
 /// <summary>

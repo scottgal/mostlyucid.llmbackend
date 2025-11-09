@@ -37,6 +37,12 @@ public class OpenAILlmBackend : BaseLlmBackend
 
     public override async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
     {
+        // Check budget first (no point checking API if we're over budget)
+        if (!IsWithinBudget())
+        {
+            return false;
+        }
+
         try
         {
             var response = await HttpClient.GetAsync("v1/models", cancellationToken);

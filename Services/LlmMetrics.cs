@@ -176,6 +176,25 @@ public static class LlmMetrics
         });
 
     /// <summary>
+    /// Current spend vs budget limit for each backend
+    /// </summary>
+    /// <remarks>
+    /// Labels:
+    /// - backend: Backend name
+    /// - limit_type: "current" or "max"
+    ///
+    /// Use to monitor budget usage and set alerts when approaching limits.
+    /// Query example: llm_backend_budget{limit_type="current"} / llm_backend_budget{limit_type="max"}
+    /// </remarks>
+    public static readonly Gauge BackendBudget = Metrics.CreateGauge(
+        "llm_backend_budget_usd",
+        "Current spend and budget limit in USD",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "backend", "limit_type" }
+        });
+
+    /// <summary>
     /// Record a successful request
     /// </summary>
     /// <param name="backendName">Backend that processed the request</param>
@@ -249,6 +268,18 @@ public static class LlmMetrics
     public static void DecrementActiveRequests(string backendName)
     {
         ActiveRequests.WithLabels(backendName).Dec();
+    }
+
+    /// <summary>
+    /// Update backend budget tracking metrics
+    /// </summary>
+    /// <param name="backendName">Backend name</param>
+    /// <param name="currentSpend">Current spend in USD</param>
+    /// <param name="maxSpend">Maximum budget in USD</param>
+    public static void UpdateBackendBudget(string backendName, decimal currentSpend, decimal maxSpend)
+    {
+        BackendBudget.WithLabels(backendName, "current").Set((double)currentSpend);
+        BackendBudget.WithLabels(backendName, "max").Set((double)maxSpend);
     }
 
     /// <summary>
