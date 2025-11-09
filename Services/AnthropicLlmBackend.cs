@@ -34,14 +34,14 @@ public class AnthropicLlmBackend : BaseLlmBackend
         base.ConfigureHttpClient();
 
         // Add Anthropic API key header
-        if (!string.IsNullOrEmpty(_config.ApiKey))
+        if (!string.IsNullOrEmpty(Config.ApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("x-api-key", _config.ApiKey);
+            HttpClient.DefaultRequestHeaders.Add("x-api-key", Config.ApiKey);
         }
 
         // Add Anthropic version header
-        var version = _config.AnthropicVersion ?? DefaultAnthropicVersion;
-        _httpClient.DefaultRequestHeaders.Add("anthropic-version", version);
+        var version = Config.AnthropicVersion ?? DefaultAnthropicVersion;
+        HttpClient.DefaultRequestHeaders.Add("anthropic-version", version);
     }
 
     public override async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)

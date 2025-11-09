@@ -1,0 +1,34 @@
+╔════════════════════════════════════════════════════════════════╗
+║                  ⚠️  IMPORTANT: Before Publishing  ⚠️           ║
+╚════════════════════════════════════════════════════════════════╝
+
+REQUIRED: Convert icon.svg to icon.png
+
+The NuGet package requires a PNG icon file. Currently only icon.svg exists.
+
+Quick Commands:
+--------------
+
+Using ImageMagick (recommended):
+  convert -background none -size 128x128 icon.svg icon.png
+
+Using Inkscape:
+  inkscape icon.svg --export-type=png --export-filename=icon.png --export-width=128 --export-height=128
+
+Using online converter:
+  https://cloudconvert.com/svg-to-png
+
+After conversion:
+  1. Verify icon.png exists: ls -la icon.png
+  2. Check file is valid: file icon.png
+  3. Should be 128x128 pixels
+
+Then you can publish:
+  dotnet pack --configuration Release
+  dotnet nuget push ./artifacts/*.nupkg --api-key YOUR_KEY --source https://api.nuget.org/v3/index.json
+
+Or use GitHub Actions:
+  git tag -a v2.1.0 -m "Release v2.1.0"
+  git push origin v2.1.0
+
+See PUBLISHING.md for complete instructions.

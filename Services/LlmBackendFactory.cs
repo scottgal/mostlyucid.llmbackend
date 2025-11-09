@@ -86,6 +86,12 @@ public class LlmBackendFactory
                     _loggerFactory.CreateLogger<CohereLlmBackend>(),
                     httpClient),
 
+            LlmBackendType.LlamaCpp =>
+                new LlamaCppLlmBackend(
+                    config,
+                    _loggerFactory.CreateLogger<LlamaCppLlmBackend>(),
+                    httpClient),
+
             _ => throw new NotSupportedException($"Backend type {config.Type} is not supported. " +
                 $"If this is a plugin backend, ensure CustomBackendType is set and the plugin is loaded.")
         };

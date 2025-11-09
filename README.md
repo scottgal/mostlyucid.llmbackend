@@ -3,7 +3,7 @@
 A robust, production-ready abstraction library for multiple LLM backends with enterprise-grade features including failover, load balancing, retry logic, circuit breakers, and comprehensive configuration options.
 
 [![NuGet](https://img.shields.io/nuget/v/Mostlyucid.LlmBackend.svg)](https://www.nuget.org/packages/Mostlyucid.LlmBackend/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 
 ## Features
 
@@ -15,6 +15,7 @@ A robust, production-ready abstraction library for multiple LLM backends with en
 - **Cohere** - Command, Command R, Command R+
 - **Ollama** - Local open-source models
 - **LM Studio** - Local model serving
+- **LlamaCpp** - Local GGUF models with automatic downloading (NEW!)
 - **EasyNMT** - Translation-optimized models
 - **Generic OpenAI-compatible** - Any OpenAI-compatible API
 
@@ -684,7 +685,9 @@ We especially welcome plugin contributions for new LLM providers! See the [Plugi
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This is free and unencumbered software released into the public domain. See the [UNLICENSE](UNLICENSE) file for details.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this software, either in source code form or as a compiled binary, for any purpose, commercial or non-commercial, and by any means.
 
 ## Support
 

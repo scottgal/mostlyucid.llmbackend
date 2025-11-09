@@ -460,6 +460,46 @@ public class LlmBackendConfig
     /// Cost per 1M output tokens (for cost tracking)
     /// </summary>
     public decimal? CostPerMillionOutputTokens { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: Local path to the model file (GGUF format)
+    /// </summary>
+    public string? ModelPath { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: URL to download the model from if it doesn't exist locally
+    /// </summary>
+    public string? ModelUrl { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: Context window size (default: 2048)
+    /// </summary>
+    public int? ContextSize { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: Number of layers to offload to GPU (default: 0 = CPU only)
+    /// </summary>
+    public int? GpuLayers { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: Number of threads to use for computation (default: auto-detect)
+    /// </summary>
+    public int? Threads { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: Automatically download model if it doesn't exist (default: true)
+    /// </summary>
+    public bool AutoDownloadModel { get; set; } = true;
+
+    /// <summary>
+    /// LlamaCpp-specific: Use memory lock to prevent swapping (default: false)
+    /// </summary>
+    public bool? UseMemoryLock { get; set; }
+
+    /// <summary>
+    /// LlamaCpp-specific: Seed for random number generation (-1 = random)
+    /// </summary>
+    public int? Seed { get; set; }
 }
 
 /// <summary>
@@ -506,7 +546,8 @@ public enum LlmBackendType
     Anthropic,
     Gemini,
     Cohere,
-    GenericOpenAI
+    GenericOpenAI,
+    LlamaCpp
 }
 
 /// <summary>

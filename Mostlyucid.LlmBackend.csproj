@@ -9,14 +9,15 @@
 
         <!-- Package Metadata -->
         <PackageId>Mostlyucid.LlmBackend</PackageId>
-        <Version>2.0.0</Version>
+        <Version>2.1.0</Version>
         <Authors>Scott Galloway</Authors>
         <Company>Mostlyucid</Company>
         <Product>Mostlyucid LLM Backend</Product>
-        <Description>Enterprise-grade abstraction library for multiple LLM backends with comprehensive features including failover, load balancing, circuit breakers, rate limiting, caching, and secrets management. Supports OpenAI, Azure OpenAI, Anthropic Claude, Google Gemini, Cohere, Ollama, and more.</Description>
-        <PackageTags>LLM;OpenAI;Azure;Anthropic;Claude;Gemini;Cohere;Ollama;AI;ML;ChatGPT;GPT4;Backend;Failover;CircuitBreaker;RateLimiting</PackageTags>
+        <Description>Enterprise-grade abstraction library for multiple LLM backends with comprehensive features including failover, load balancing, circuit breakers, rate limiting, caching, and secrets management. Supports OpenAI, Azure OpenAI, Anthropic Claude, Google Gemini, Cohere, Ollama, LlamaCpp (with auto-download), and more. Now with local GGUF model support!</Description>
+        <PackageTags>LLM;OpenAI;Azure;Anthropic;Claude;Gemini;Cohere;Ollama;LlamaCpp;GGUF;AI;ML;ChatGPT;GPT4;Backend;Failover;CircuitBreaker;RateLimiting;LocalLLM</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseFile>UNLICENSE</PackageLicenseFile>
+        <PackageIcon>icon.png</PackageIcon>
         <PackageProjectUrl>https://github.com/scottgal/mostlyucid.llmbackend</PackageProjectUrl>
         <RepositoryUrl>https://github.com/scottgal/mostlyucid.llmbackend</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -24,23 +25,16 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
-        <!-- Release Notes -->
-        <PackageReleaseNotes>
-v2.0.0 - Major Release
-- Added Anthropic Claude support (Claude 3, 3.5)
-- Added Google Gemini support (AI Studio and Vertex AI)
-- Added Cohere support
-- Enhanced configuration with circuit breakers, rate limiting, and caching
-- Added secrets management (Azure Key Vault, AWS Secrets Manager, etc.)
-- Comprehensive telemetry and cost tracking
-- Health checks and monitoring
-- Breaking: Enhanced configuration model with new options
-        </PackageReleaseNotes>
+        <!-- Release Notes from File -->
+        <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/RELEASE-NOTES.md"))</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="UNLICENSE" Pack="true" PackagePath="\" />
+        <None Include="icon.png" Pack="true" PackagePath="\" />
         <None Include="examples\appsettings.example.json" Pack="true" PackagePath="content\examples\" />
+        <None Include="examples\llamacpp-config.example.json" Pack="true" PackagePath="content\examples\" />
     </ItemGroup>
 
     <ItemGroup>
