@@ -86,6 +86,29 @@ public class LlmSettings
     /// Plugin configuration
     /// </summary>
     public PluginConfig Plugins { get; set; } = new();
+
+    /// <summary>
+    /// Prompt builder configuration for different task types
+    /// </summary>
+    /// <remarks>
+    /// Configure which prompt builder to use for different scenarios.
+    /// Task types: "Default", "Translation", "Chat", "Summarization", "CodeGeneration", etc.
+    /// You can also specify custom task types and map them to specific prompt builders.
+    ///
+    /// Example configuration:
+    /// <code>
+    /// "PromptBuilders": {
+    ///   "Default": "DefaultPromptBuilder",
+    ///   "Translation": "TranslationPromptBuilder",
+    ///   "Chat": "CustomChatPromptBuilder"
+    /// }
+    /// </code>
+    /// </remarks>
+    public Dictionary<string, string> PromptBuilders { get; set; } = new()
+    {
+        ["Default"] = "DefaultPromptBuilder",
+        ["Translation"] = "TranslationPromptBuilder"
+    };
 }
 
 /// <summary>
@@ -251,37 +274,156 @@ public class SecretsConfig
 /// <summary>
 /// Telemetry and metrics configuration
 /// </summary>
+/// <remarks>
+/// Controls logging verbosity at different levels:
+///
+/// <strong>Debug Level:</strong> Copious logging including:
+/// - Full prompts (may contain sensitive user data)
+/// - Complete raw API responses
+/// - Request/response headers
+/// - Detailed timing information
+/// - Plugin loading details
+/// - Configuration resolution steps
+///
+/// <strong>Information Level:</strong> Standard operational logging:
+/// - Request summaries (backend used, model, duration)
+/// - Success/failure indicators
+/// - Token counts and costs
+/// - Backend health status changes
+/// - Plugin registration
+///
+/// <strong>Warning Level:</strong> Potential issues:
+/// - Backend unavailability
+/// - Retry attempts
+/// - Circuit breaker state changes
+/// - Configuration warnings
+/// - Plugin validation failures
+///
+/// <strong>Error Level:</strong> Failures only:
+/// - Request failures
+/// - Backend errors
+/// - Plugin loading errors
+/// - Critical configuration issues
+///
+/// Set EnableDetailedLogging=true and use Debug log level for troubleshooting.
+/// In production, use Information or Warning level with EnableDetailedLogging=false.
+/// </remarks>
 public class TelemetryConfig
 {
     /// <summary>
-    /// Enable OpenTelemetry metrics
+    /// Enable OpenTelemetry metrics collection
     /// </summary>
+    /// <remarks>
+    /// Collects metrics such as request counts, latencies, error rates.
+    /// Metrics can be exported to Prometheus, Application Insights, etc.
+    /// </remarks>
     public bool EnableMetrics { get; set; } = true;
 
     /// <summary>
-    /// Enable OpenTelemetry tracing
+    /// Enable OpenTelemetry distributed tracing
     /// </summary>
+    /// <remarks>
+    /// Creates spans for LLM requests, allowing you to trace requests
+    /// through your entire system including LLM backend calls.
+    /// </remarks>
     public bool EnableTracing { get; set; } = true;
 
     /// <summary>
-    /// Enable detailed logging
+    /// Enable detailed debug logging (includes prompts and responses)
     /// </summary>
+    /// <remarks>
+    /// <strong>WARNING:</strong> Enables very verbose logging at Debug level.
+    /// Logs will include:
+    /// - Complete prompts (may contain PII)
+    /// - Full API responses
+    /// - Request/response headers
+    /// - Detailed configuration
+    ///
+    /// <strong>Use only for debugging</strong>. Do not enable in production
+    /// as it may log sensitive user data and significantly increase log volume.
+    ///
+    /// Must set log level to Debug in logging configuration for this to take effect.
+    /// </remarks>
     public bool EnableDetailedLogging { get; set; } = false;
 
     /// <summary>
-    /// Log request and response content (may contain sensitive data)
+    /// Log full request prompts at Debug level
     /// </summary>
-    public bool LogContent { get; set; } = false;
+    /// <remarks>
+    /// When true and log level is Debug, full prompts are logged.
+    /// <strong>WARNING:</strong> Prompts may contain sensitive user data.
+    /// Only enable for debugging specific issues.
+    /// </remarks>
+    public bool LogPrompts { get; set; } = false;
+
+    /// <summary>
+    /// Log full API responses at Debug level
+    /// </summary>
+    /// <remarks>
+    /// When true and log level is Debug, complete raw API responses are logged.
+    /// Useful for debugging API response parsing issues.
+    /// May contain large amounts of data.
+    /// </remarks>
+    public bool LogResponses { get; set; } = false;
+
+    /// <summary>
+    /// Log HTTP headers at Debug level
+    /// </summary>
+    /// <remarks>
+    /// Logs request and response headers for debugging authentication
+    /// and API communication issues.
+    /// </remarks>
+    public bool LogHeaders { get; set; } = false;
+
+    /// <summary>
+    /// Log timing information at Debug level
+    /// </summary>
+    /// <remarks>
+    /// Logs detailed timing for each stage of request processing:
+    /// - Prompt building time
+    /// - HTTP request time
+    /// - Response parsing time
+    /// - Total end-to-end time
+    /// </remarks>
+    public bool LogTiming { get; set; } = true;
 
     /// <summary>
     /// Service name for telemetry
     /// </summary>
+    /// <remarks>
+    /// Used in OpenTelemetry traces and metrics to identify this service.
+    /// Helps distinguish LLM backend calls from other services in distributed traces.
+    /// </remarks>
     public string ServiceName { get; set; } = "LlmBackend";
 
     /// <summary>
-    /// Enable cost tracking
+    /// Enable cost tracking and logging
     /// </summary>
+    /// <remarks>
+    /// Tracks and logs costs based on token usage and configured pricing.
+    /// Logs cost information at Information level after each request.
+    /// Requires CostPerMillionInputTokens and CostPerMillionOutputTokens
+    /// to be configured on backends.
+    /// </remarks>
     public bool EnableCostTracking { get; set; } = false;
+
+    /// <summary>
+    /// Log token counts with each request
+    /// </summary>
+    /// <remarks>
+    /// Logs input/output/total token counts at Information level.
+    /// Useful for monitoring API usage and optimizing prompts.
+    /// </remarks>
+    public bool LogTokenCounts { get; set; } = true;
+
+    /// <summary>
+    /// Include correlation IDs in all log messages
+    /// </summary>
+    /// <remarks>
+    /// Adds a unique correlation ID to each request that appears in all
+    /// related log messages. Helps track a single request through logs.
+    /// </remarks>
+    public bool IncludeCorrelationId { get; set; } = true;
 }
 
 /// <summary>
@@ -334,11 +476,43 @@ public class LlmBackendConfig
     /// Custom backend type identifier (used for plugin backends)
     /// Only used when Type is not recognized or for plugin-provided backends
     /// </summary>
+    /// <remarks>
+    /// When using plugin-provided backends, set this to match one of the types
+    /// in the plugin's SupportedBackendTypes list.
+    /// Example: "Mistral", "Perplexity", "TogetherAI"
+    /// </remarks>
     public string? CustomBackendType { get; set; }
+
+    /// <summary>
+    /// Prompt builder type to use for this backend
+    /// </summary>
+    /// <remarks>
+    /// Specifies which prompt builder this backend should use.
+    /// If not set, uses the default prompt builder from global PromptBuilders configuration.
+    ///
+    /// Common values:
+    /// - "DefaultPromptBuilder" - Basic prompt building
+    /// - "TranslationPromptBuilder" - Optimized for translation with placeholder preservation
+    /// - "ChatPromptBuilder" - Conversational with history management
+    /// - Custom plugin-provided types
+    ///
+    /// You can override the global prompt builder selection on a per-backend basis.
+    /// This is useful when different backends need different prompting strategies.
+    /// </remarks>
+    /// <example>"TranslationPromptBuilder"</example>
+    public string? PromptBuilderType { get; set; }
 
     /// <summary>
     /// Base URL for the backend API
     /// </summary>
+    /// <remarks>
+    /// The base URL for the LLM provider's API endpoint.
+    /// Examples:
+    /// - OpenAI: "https://api.openai.com"
+    /// - Azure OpenAI: "https://YOUR_RESOURCE.openai.azure.com"
+    /// - Anthropic: "https://api.anthropic.com"
+    /// - Local Ollama: "http://localhost:11434"
+    /// </remarks>
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>
