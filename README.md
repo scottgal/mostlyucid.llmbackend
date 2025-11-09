@@ -15,6 +15,7 @@ A robust, production-ready abstraction library for multiple LLM backends with en
 - **Cohere** - Command, Command R, Command R+
 - **Ollama** - Local open-source models
 - **LM Studio** - Local model serving
+- **LlamaCpp** - Local GGUF models with automatic downloading (NEW!)
 - **EasyNMT** - Translation-optimized models
 - **Generic OpenAI-compatible** - Any OpenAI-compatible API
 
