@@ -20,6 +20,7 @@ The mostlylucid.llmbackend library provides built-in Prometheus metrics for moni
 - **Request metrics** - Total requests, success/failure rates, durations
 - **Token usage** - Prompt, completion, and total tokens per backend/model
 - **Cost tracking** - Estimated costs based on configured pricing
+- **Budget tracking** (NEW!) - Current spend vs limits with automatic backend disabling
 - **Error tracking** - Categorized errors (rate limits, timeouts, auth, etc.)
 - **Health monitoring** - Backend availability and status
 - **Concurrency** - Active requests in flight
@@ -215,6 +216,39 @@ Number of requests currently in flight.
 - Concurrency monitoring
 - Load balancing
 - Detect stuck requests
+
+### llm_backend_budget_usd (Gauge) - NEW!
+
+Current spend and budget limit in USD per backend.
+
+**Labels:**
+- `backend` - Backend name
+- `limit_type` - Either "current" (spend so far) or "max" (configured limit)
+
+**Use cases:**
+- Budget monitoring in real-time
+- Alert when approaching spend limits
+- Visualize current vs max spend
+- Track automatic backend disabling
+
+**Example values:**
+```
+llm_backend_budget_usd{backend="GPT-4o",limit_type="current"} 7.32
+llm_backend_budget_usd{backend="GPT-4o",limit_type="max"} 10.00
+```
+
+**Configuration:**
+```json
+{
+  "Backends": [{
+    "Name": "GPT-4o",
+    "MaxSpendUsd": 10.00,
+    "SpendResetPeriod": "Daily"
+  }]
+}
+```
+
+When current >= max, backend automatically becomes unavailable until next reset period.
 
 ## Configuration
 
@@ -447,6 +481,33 @@ Peak concurrency:
 max_over_time(sum(llm_active_requests)[1h])
 ```
 
+### Budget Usage Percentage (NEW!)
+
+Current spend as percentage of limit:
+```promql
+(llm_backend_budget_usd{limit_type="current"}
+/
+llm_backend_budget_usd{limit_type="max"}) * 100
+```
+
+### Backends Near Budget Limit
+
+Backends above 80% of budget:
+```promql
+llm_backend_budget_usd{limit_type="current"}
+/
+llm_backend_budget_usd{limit_type="max"} > 0.8
+```
+
+### Budget Remaining
+
+Amount left to spend:
+```promql
+llm_backend_budget_usd{limit_type="max"}
+-
+llm_backend_budget_usd{limit_type="current"}
+```
+
 ## Sample Dashboard
 
 Here's a complete Grafana dashboard JSON you can import:
@@ -551,6 +612,32 @@ groups:
     increase(llm_estimated_cost_usd[1h]) > 10
   annotations:
     summary: "LLM costs exceeded $10/hour"
+```
+
+**Budget Alert (NEW!):**
+```yaml
+- alert: LLMBudgetNearLimit
+  expr: |
+    (llm_backend_budget_usd{limit_type="current"}
+    /
+    llm_backend_budget_usd{limit_type="max"}) > 0.9
+  for: 5m
+  annotations:
+    summary: "Backend {{ $labels.backend }} has used 90% of budget"
+    description: "Current spend: {{ $value }}%"
+```
+
+**Budget Exceeded Alert:**
+```yaml
+- alert: LLMBudgetExceeded
+  expr: |
+    llm_backend_budget_usd{limit_type="current"}
+    >=
+    llm_backend_budget_usd{limit_type="max"}
+  for: 1m
+  annotations:
+    summary: "Backend {{ $labels.backend }} budget exceeded - auto-disabled"
+    description: "Backend will be re-enabled at next reset period"
 ```
 
 **Latency Alert:**
@@ -686,16 +773,20 @@ The mostlylucid.llmbackend library provides comprehensive Prometheus metrics out
 - ✅ **Request metrics** - Rate, duration, success/failure
 - ✅ **Token tracking** - Usage by type and backend
 - ✅ **Cost estimation** - Real-time cost tracking
+- ✅ **Budget tracking** (NEW!) - Automatic spend limits with backend disabling
 - ✅ **Error categorization** - Detailed error types
 - ✅ **Health monitoring** - Backend availability
 - ✅ **Concurrency** - Active request tracking
 
 With this monitoring stack, you can:
 - Track LLM usage and costs in real-time
+- Set budget limits with automatic enforcement
+- Get alerted before and when budgets are exceeded
 - Set up alerts for anomalies
 - Optimize backend selection
 - Plan capacity and budgets
 - Debug issues quickly
+- Visualize spend vs budget limits in Grafana
 
 For more information:
 - Prometheus documentation: https://prometheus.io/docs/

@@ -25,6 +25,7 @@ A robust, production-ready abstraction library for multiple LLM backends with en
   - Lowest Latency (performance-based routing)
   - Specific backend targeting
   - Random distribution
+  - **Simultaneous** (NEW! - parallel multi-LLM responses for creative tasks)
 
 - **Resilience & Reliability**
   - Automatic retry with exponential backoff
@@ -47,9 +48,10 @@ A robust, production-ready abstraction library for multiple LLM backends with en
 - **Observability**
   - OpenTelemetry metrics and tracing
   - Comprehensive logging
-  - Cost tracking
+  - Cost tracking with **automatic budget limits** (NEW!)
   - Performance statistics
   - Health status monitoring
+  - Prometheus/Grafana metrics support
 
 - **Flexibility**
   - Pluggable prompt builders
@@ -572,9 +574,52 @@ Target a specific named backend.
 var request = new LlmRequest
 {
     Prompt = "Hello",
-    BackendName = "Claude"  // Use specific backend
+    PreferredBackend = "Claude"  // Use specific backend
 };
 ```
+
+### Simultaneous Strategy (NEW!)
+
+Call **multiple LLMs in parallel** and return all responses for comparison. Perfect for creative tasks where you want to see different perspectives!
+
+```json
+{
+  "SelectionStrategy": "Simultaneous",
+  "Backends": [
+    { "Name": "Claude", "Type": "Anthropic", "ModelName": "claude-3-5-sonnet-20241022" },
+    { "Name": "GPT4o", "Type": "OpenAI", "ModelName": "gpt-4o" },
+    { "Name": "Llama3", "Type": "Ollama", "ModelName": "llama3" }
+  ]
+}
+```
+
+**Usage**:
+```csharp
+var response = await _llmService.CompleteAsync(new LlmRequest
+{
+    Prompt = "Write a creative opening for a sci-fi story"
+});
+
+// Primary response (first successful)
+Console.WriteLine($"Primary ({response.Backend}): {response.Content}");
+
+// Alternative responses from other LLMs
+foreach (var alt in response.AlternativeResponses ?? new())
+{
+    Console.WriteLine($"\nAlternative ({alt.Backend}): {alt.Content}");
+}
+```
+
+**Use Cases**:
+- Creative writing (compare Claude's prose vs GPT-4's structure)
+- A/B testing different model outputs
+- Educational comparisons of LLM capabilities
+- Building consensus from multiple models
+- Quality assurance (pick the best response)
+
+**Note**: This strategy calls ALL enabled backends in parallel, consuming quota/budget from each. Set appropriate `MaxSpendUsd` limits to control costs.
+
+See the [SciFi Story Writer example](#example-3-collaborative-scifi-story-writer) for a complete implementation.
 
 ### Using Plugin Backends
 
@@ -737,7 +782,9 @@ Then set: `LLM_OPENAI_APIKEY=sk-...`
 }
 ```
 
-## Cost Tracking
+## Cost Tracking & Budget Limits (NEW!)
+
+### Basic Cost Tracking
 
 Enable cost tracking to monitor API usage costs:
 
@@ -764,18 +811,288 @@ var estimatedCost = (response.PromptTokens / 1_000_000.0 * 5.0) +
                     (response.CompletionTokens / 1_000_000.0 * 15.0);
 ```
 
+### Automatic Budget Limits (NEW!)
+
+Set spending limits and **automatically disable backends** when exceeded:
+
+```json
+{
+  "Backends": [
+    {
+      "Name": "GPT-4o",
+      "Type": "OpenAI",
+      "ModelName": "gpt-4o",
+      "CostPerMillionInputTokens": 2.50,
+      "CostPerMillionOutputTokens": 10.00,
+      "MaxSpendUsd": 10.00,
+      "SpendResetPeriod": "Daily",
+      "LogBudgetExceeded": true
+    }
+  ]
+}
+```
+
+**Configuration Options**:
+- `MaxSpendUsd`: Maximum spend limit in USD (null = unlimited)
+- `SpendResetPeriod`: When to reset the counter
+  - `Daily` - Reset at midnight UTC
+  - `Weekly` - Reset on configured day (default: Monday)
+  - `Monthly` - Reset on configured day (default: 1st)
+  - `Never` - Manual reset only
+- `SpendResetDayOfWeek`: For weekly resets (0-6, Sunday-Saturday)
+- `SpendResetDayOfMonth`: For monthly resets (1-31)
+- `LogBudgetExceeded`: Whether to log warnings when budget exceeded
+
+**How it Works**:
+1. Each request's cost is tracked automatically
+2. When `MaxSpendUsd` is exceeded, backend becomes unavailable
+3. Backend is automatically re-enabled at next reset period
+4. Failover strategy will use next available backend
+5. Prometheus metrics track current spend vs budget
+
+**Prometheus Metrics**:
+```
+llm_backend_budget_usd{backend="GPT-4o",limit_type="current"} 7.32
+llm_backend_budget_usd{backend="GPT-4o",limit_type="max"} 10.00
+```
+
+**Example: Tiered Failover with Budgets**
+```json
+{
+  "SelectionStrategy": "Failover",
+  "Backends": [
+    {
+      "Name": "GPT-4o-Primary",
+      "Priority": 1,
+      "MaxSpendUsd": 50.00,
+      "SpendResetPeriod": "Daily"
+    },
+    {
+      "Name": "Claude-Backup",
+      "Priority": 2,
+      "MaxSpendUsd": 30.00,
+      "SpendResetPeriod": "Daily"
+    },
+    {
+      "Name": "Ollama-Free",
+      "Priority": 3
+    }
+  ]
+}
+```
+
+When GPT-4o hits $50, failover to Claude. When Claude hits $30, failover to free Ollama!
+
+See [METRICS-AND-MONITORING.md](docs/METRICS-AND-MONITORING.md) for complete metrics documentation.
+
+## Example Applications
+
+The library includes three complete example applications demonstrating different use cases and strategies:
+
+### Example 1: Cost-Optimized Translator
+
+**Location**: `examples/01-SimpleTranslator/`
+
+A translation service using **Failover strategy** to minimize costs while maintaining quality.
+
+**Strategy**: Free models first, paid as fallback
+- **Primary**: EasyNMT (free, specialized translation)
+- **Secondary**: Ollama qwen2.5:1.5b (free, general purpose)
+- **Fallback**: OpenAI GPT-4o-mini (paid, $2 daily budget)
+
+**Features**:
+- Transparent backend selection
+- Batch translation with per-backend statistics
+- Budget protection on paid backends
+- HTML welcome page with API documentation
+
+**Endpoints**:
+- `POST /translate` - Single translation
+- `POST /translate/batch` - Batch processing
+- `GET /health` - Backend health status
+- `GET /` - Interactive documentation
+
+**Run It**:
+```bash
+cd examples/01-SimpleTranslator
+dotnet run
+
+# Test it
+curl -X POST http://localhost:5000/translate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello world", "targetLanguage": "es"}'
+```
+
+**Key Learning**: How to optimize costs with free local models and paid fallbacks.
+
+---
+
+### Example 2: Multi-Model Chat Interface
+
+**Location**: `examples/02-ChatInterface/`
+
+A chat application using **Specific strategy** with user-selectable models.
+
+**Models Available**:
+- Ollama Llama 3 (free local)
+- OpenAI GPT-4o-mini (paid)
+- Anthropic Claude 3.5 Sonnet (paid)
+
+**Features**:
+- In-memory conversation history management
+- Rate limiting (60 req/min, 5 concurrent)
+- Real-time cost tracking per conversation
+- Model selection via UI
+- Web-based chat interface with JavaScript
+
+**Endpoints**:
+- `POST /chat` - Send message
+- `GET /conversations/{id}` - Get conversation
+- `DELETE /conversations/{id}` - Clear conversation
+- `GET /models` - List available models
+- `GET /` - Chat UI
+
+**Run It**:
+```bash
+cd examples/02-ChatInterface
+dotnet run
+
+# Open browser
+open http://localhost:5000
+```
+
+**Key Learning**: How to manage conversations and let users choose models.
+
+---
+
+### Example 3: Collaborative SciFi Story Writer
+
+**Location**: `examples/03-SciFiStoryWriter/`
+
+A creative writing tool using **Simultaneous strategy** (NEW!) for multi-LLM collaboration.
+
+**Strategy**: Get multiple creative variations from different LLMs
+- Claude 3.5 Sonnet (literary prose)
+- GPT-4o (plot structure)
+- Llama 3 (creative twists)
+
+**How It Works**:
+1. **Generate Story Beats** → Get 3 variations from 3 LLMs
+2. **User Selects Favorite** → Pick the best outline
+3. **Write Page 1** → Get 3 creative versions
+4. **User Selects Best** → Choose favorite prose
+5. **Write Page 2** → Cumulative context from previous selections
+6. **Repeat** → Build story page-by-page
+7. **Export** → Download complete markdown story
+
+**Features**:
+- Parallel multi-LLM calls with Simultaneous strategy
+- Side-by-side comparison of different models
+- Cumulative context building (each page sees previous selections)
+- Markdown export with metadata
+- Retro terminal-style UI (green on black)
+- Budget limits ($5 daily) on paid models
+
+**Endpoints**:
+- `POST /beats` - Generate story beats (3 variations)
+- `POST /select/{id}/beats` - Select favorite beats
+- `POST /page/{id}` - Generate next page (3 variations)
+- `POST /select/{id}/page` - Add selected page
+- `GET /story/{id}` - View story status
+- `GET /export/{id}` - Download markdown
+- `GET /stories` - List all stories
+
+**Example Workflow**:
+```bash
+cd examples/03-SciFiStoryWriter
+dotnet run
+
+# 1. Generate beats
+curl -X POST http://localhost:5000/beats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "genre": "Cyberpunk",
+    "themes": ["AI consciousness", "corporate dystopia"],
+    "setting": "Neo-Tokyo 2157",
+    "tone": "Dark and gritty"
+  }'
+
+# Returns 3 beat variations from Claude, GPT-4o, and Llama 3
+# Response: { "storyId": "abc-123", "variations": [...] }
+
+# 2. Select your favorite beats
+curl -X POST http://localhost:5000/select/abc-123/beats \
+  -d '{"selectedText": "...", "backend": "gpt4o-plotter", "model": "gpt-4o"}'
+
+# 3. Generate first page (gets 3 versions)
+curl -X POST http://localhost:5000/page/abc-123
+
+# 4. Select best version
+curl -X POST http://localhost:5000/select/abc-123/page \
+  -d '{"selectedText": "...", "backend": "claude-writer", "model": "claude-3-5-sonnet-20241022"}'
+
+# 5. Repeat for each page
+
+# 6. Export final story
+curl http://localhost:5000/export/abc-123 > my-story.md
+```
+
+**Key Learning**:
+- How to use Simultaneous strategy for creative tasks
+- Comparing outputs from different LLMs
+- Building cumulative context across multiple LLM calls
+- Cherry-picking the best parts from different models
+
+**Why This is Awesome**:
+- See how Claude excels at prose, GPT-4o at plot structure
+- Different models = different creative perspectives
+- Build consensus or pick the best from each
+- Educational: understand LLM strengths and weaknesses
+- Cost-conscious: free Llama 3 included for comparison
+
+---
+
+### Running the Examples
+
+All examples use .NET 8.0 minimal APIs and include:
+- Complete standalone .csproj files
+- Interactive HTML documentation pages
+- Budget tracking and cost transparency
+- Prometheus metrics integration
+
+**Setup**:
+```bash
+# Set your API keys
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional: Start Ollama for free local models
+ollama pull llama3
+ollama pull qwen2.5:1.5b
+ollama serve
+
+# Run any example
+cd examples/XX-ExampleName
+dotnet run
+
+# Visit http://localhost:5000 for interactive docs
+```
+
 ## Best Practices
 
 1. **Use Failover Strategy** for production with multiple backends
-2. **Enable Circuit Breakers** to prevent cascading failures
-3. **Configure Health Checks** to automatically detect and skip unhealthy backends
-4. **Use Secrets Management** (never commit API keys to source control)
-5. **Enable Caching** for repeated queries to reduce costs
-6. **Monitor Statistics** to optimize backend selection and performance
-7. **Set Timeouts** appropriate for your use case
-8. **Configure Rate Limits** to stay within API quotas
-9. **Enable Telemetry** for production observability
-10. **Use Cost Tracking** to monitor and optimize expenses
+2. **Set Budget Limits** (NEW!) to prevent runaway costs with automatic backend disabling
+3. **Enable Circuit Breakers** to prevent cascading failures
+4. **Configure Health Checks** to automatically detect and skip unhealthy backends
+5. **Use Secrets Management** (never commit API keys to source control)
+6. **Enable Caching** for repeated queries to reduce costs
+7. **Monitor Statistics** to optimize backend selection and performance
+8. **Set Timeouts** appropriate for your use case
+9. **Configure Rate Limits** to stay within API quotas
+10. **Enable Telemetry** for production observability
+11. **Use Cost Tracking** to monitor and optimize expenses
+12. **Try Simultaneous Strategy** (NEW!) for creative tasks where quality > speed
+13. **Use Prometheus Metrics** to monitor budget usage and performance in Grafana
 
 ## Testing
 
@@ -798,9 +1115,16 @@ dotnet test tests/Mostlyucid.LlmBackend.IntegrationTests
 - **[LLMApi Integration Guide](docs/INTEGRATION-LLMAPI.md)** - Complete guide for integrating with LLMApi projects
 - **[ResXTranslator Integration Guide](docs/INTEGRATION-RESXTRANSLATOR.md)** - Migration guide for ResXTranslator projects
 - **[Plugin Development Guide](docs/PLUGIN-DEVELOPMENT.md)** - How to create custom LLM backend plugins
+- **[Metrics and Monitoring Guide](docs/METRICS-AND-MONITORING.md)** - Prometheus/Grafana setup and budget tracking
+- **[Testing Guide](docs/TESTING-GUIDE.md)** - Unit testing with fakes and mocks
 
 ### Configuration Examples
 - **[Complete Configuration Example](examples/appsettings.example.json)** - Fully commented configuration template
+
+### Example Applications
+- **[01-SimpleTranslator](examples/01-SimpleTranslator/)** - Cost-optimized translation with failover
+- **[02-ChatInterface](examples/02-ChatInterface/)** - Multi-model chat with conversation history
+- **[03-SciFiStoryWriter](examples/03-SciFiStoryWriter/)** - Collaborative writing with Simultaneous strategy
 
 ## Contributing
 
