@@ -1,80 +1,80 @@
 using System.Collections.Concurrent;
+using System.Text;
 using Mostlyucid.LlmBackend.Configuration;
 using Mostlyucid.LlmBackend.DependencyInjection;
 using Mostlyucid.LlmBackend.Interfaces;
 using Mostlyucid.LlmBackend.Models;
 
 /*
- * Sci-Fi Story Writer's Tool
+ * SciFi Story Writer with Simultaneous Multi-LLM Collaboration
  *
  * Demonstrates:
- * - Structured creative writing prompts
- * - Long-form content generation with context windows
- * - Round-robin load balancing across models for variety
- * - Character and plot consistency management
- * - Temperature and creativity controls
+ * - Simultaneous backend strategy (NEW!) - get multiple creative variations
+ * - Page-by-page story building with user selection
+ * - Cumulative context - each page builds on previous choices
+ * - Final markdown story generation
+ * - Comparing outputs from different LLMs side-by-side
  *
- * Features:
- * - Generate story outlines, characters, scenes
- * - Track story elements for consistency
- * - Use multiple models for creative variety
- * - Budget-aware creative writing
+ * How it works:
+ * 1. Generate story beats - get 3 different versions from 3 LLMs
+ * 2. User selects their favorite version
+ * 3. Generate first page - using selected beats, get 3 versions
+ * 4. User selects best page
+ * 5. Repeat - each new page sees previous selections
+ * 6. Export final story as beautiful markdown
+ *
+ * This showcases how different models excel at different creative tasks!
  */
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure backends optimized for creative writing
+// Configure Simultaneous strategy with diverse creative models
 builder.Services.AddLlmBackend(settings =>
 {
-    // Round-robin for variety in creative output
-    settings.SelectionStrategy = BackendSelectionStrategy.RoundRobin;
+    // IMPORTANT: Simultaneous strategy calls ALL backends in parallel!
+    settings.SelectionStrategy = BackendSelectionStrategy.Simultaneous;
 
     settings.Backends = new List<LlmBackendConfig>
     {
-        // Claude 3.5 Sonnet - Best for creative writing, excellent prose
+        // Claude 3.5 Sonnet - Best for nuanced, literary fiction
         new()
         {
             Name = "claude-writer",
             Type = LlmBackendType.Anthropic,
             BaseUrl = "https://api.anthropic.com",
-            ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
-                     ?? "your-api-key-here",
+            ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? "your-key-here",
             ModelName = "claude-3-5-sonnet-20241022",
             Temperature = 0.9, // High creativity
-            MaxInputTokens = 200000, // Large context window
+            MaxInputTokens = 200000,
             MaxOutputTokens = 4096,
-
             CostPerMillionInputTokens = 3.00m,
-            CostPerMillionOutputTokens = 15.00m,
-            MaxSpendUsd = 5.00m, // $5 daily budget for creative work
-            SpendResetPeriod = SpendResetPeriod.Daily,
-            Enabled = true
-        },
-
-        // GPT-4o - Great at sci-fi concepts and world-building
-        new()
-        {
-            Name = "gpt4o-creator",
-            Type = LlmBackendType.OpenAI,
-            BaseUrl = "https://api.openai.com",
-            ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
-                     ?? "your-api-key-here",
-            ModelName = "gpt-4o",
-            Temperature = 0.9,
-            MaxInputTokens = 128000,
-            MaxOutputTokens = 4096,
-
-            CostPerMillionInputTokens = 5.00m,
             CostPerMillionOutputTokens = 15.00m,
             MaxSpendUsd = 5.00m,
             SpendResetPeriod = SpendResetPeriod.Daily,
             Enabled = true
         },
 
-        // Local Llama 3 - Free, good for brainstorming
+        // GPT-4o - Great for plot structure and pacing
         new()
         {
-            Name = "llama3-brainstorm",
+            Name = "gpt4o-plotter",
+            Type = LlmBackendType.OpenAI,
+            BaseUrl = "https://api.openai.com",
+            ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "your-key-here",
+            ModelName = "gpt-4o",
+            Temperature = 0.9,
+            MaxInputTokens = 128000,
+            CostPerMillionInputTokens = 2.50m,
+            CostPerMillionOutputTokens = 10.00m,
+            MaxSpendUsd = 5.00m,
+            SpendResetPeriod = SpendResetPeriod.Daily,
+            Enabled = true
+        },
+
+        // Llama 3 - Free local model for comparison
+        new()
+        {
+            Name = "llama3-creative",
             Type = LlmBackendType.Ollama,
             BaseUrl = "http://localhost:11434",
             ModelName = "llama3",
@@ -86,237 +86,359 @@ builder.Services.AddLlmBackend(settings =>
     settings.Telemetry = new TelemetryConfig
     {
         EnableMetrics = true,
-        LogTokenCounts = true
+        LogTokenCounts = true,
+        EnableCostTracking = true
     };
 });
 
-// Story storage
-var stories = new ConcurrentDictionary<string, Story>();
-
 var app = builder.Build();
 
-// Generate story outline
-app.MapPost("/outline", async (OutlineRequest request, ILlmService llm) =>
+// In-memory story storage
+var stories = new ConcurrentDictionary<string, Story>();
+
+// Generate story beats/outline with multiple LLM perspectives
+app.MapPost("/beats", async (BeatsRequest request, ILlmService llm) =>
 {
+    var storyId = Guid.NewGuid().ToString();
+
     var prompt = $"""
-        You are a creative sci-fi story writer. Generate a detailed story outline based on these parameters:
+        You are a creative sci-fi story writer. Generate 3-5 story beats (key plot points)
+        for a short story based on these parameters:
 
-        Genre: {request.Genre ?? "Hard Science Fiction"}
-        Themes: {string.Join(", ", request.Themes ?? new[] { "AI", "Space exploration" })}
-        Setting: {request.Setting ?? "Near-future solar system"}
-        Tone: {request.Tone ?? "Thoughtful and optimistic"}
+        Genre: {request.Genre}
+        Themes: {string.Join(", ", request.Themes)}
+        Setting: {request.Setting}
+        Tone: {request.Tone}
 
-        Create a story outline with:
-        1. Title
-        2. Logline (1-2 sentences)
-        3. Three-act structure with major plot points
-        4. Character archetypes needed
-        5. Key sci-fi concepts to explore
-        6. Potential twists or complications
+        Return ONLY the beats as a numbered list. Be creative and engaging!
+        Each beat should be 1-2 sentences.
 
-        Be creative and original. Focus on hard sci-fi concepts with plausible science.
+        Example format:
+        1. [First major event/setup]
+        2. [Rising action/complication]
+        3. [Climax/turning point]
+        4. [Resolution/consequence]
         """;
 
-    var response = await llm.CompleteAsync(new LlmRequest
+    var llmRequest = new LlmRequest
     {
         Prompt = prompt,
         Temperature = 0.9,
-        MaxTokens = 2000
-    });
+        MaxTokens = 1000
+    };
+
+    var response = await llm.CompleteAsync(llmRequest);
 
     if (!response.Success)
     {
-        return Results.Problem(response.ErrorMessage);
+        return Results.Problem("Failed to generate story beats");
     }
 
-    var storyId = Guid.NewGuid().ToString();
-    stories[storyId] = new Story
+    // With Simultaneous strategy, we get multiple responses!
+    var allBeats = new List<BeatVariation>
+    {
+        new()
+        {
+            Backend = response.Backend ?? "unknown",
+            Model = response.Model ?? "unknown",
+            Beats = response.Content ?? "",
+            TokensUsed = response.TotalTokens ?? 0,
+            DurationMs = response.DurationMs
+        }
+    };
+
+    // Add alternative responses
+    if (response.AlternativeResponses != null)
+    {
+        foreach (var alt in response.AlternativeResponses.Where(r => r.Success))
+        {
+            allBeats.Add(new BeatVariation
+            {
+                Backend = alt.Backend ?? "unknown",
+                Model = alt.Model ?? "unknown",
+                Beats = alt.Content ?? "",
+                TokensUsed = alt.TotalTokens ?? 0,
+                DurationMs = alt.DurationMs
+            });
+        }
+    }
+
+    // Create new story
+    var story = new Story
     {
         Id = storyId,
-        Outline = response.Content ?? "",
-        CreatedWith = response.BackendUsed ?? "unknown",
-        Metadata = request
+        Genre = request.Genre,
+        Themes = request.Themes,
+        Setting = request.Setting,
+        Tone = request.Tone,
+        BeatVariations = allBeats,
+        CreatedAt = DateTime.UtcNow
     };
+
+    stories[storyId] = story;
 
     return Results.Ok(new
     {
         storyId,
-        outline = response.Content,
-        model = response.BackendUsed,
-        tokens = response.TotalTokens
+        variations = allBeats,
+        message = $"Generated {allBeats.Count} different story beat variations! Select your favorite to continue."
     });
 });
 
-// Generate character profile
-app.MapPost("/character", async (CharacterRequest request, ILlmService llm) =>
+// Select beats and generate first page
+app.MapPost("/page/{storyId}", async (string storyId, PageRequest request, ILlmService llm) =>
 {
-    var prompt = $"""
-        Create a detailed character profile for a sci-fi story with these parameters:
-
-        Role: {request.Role}
-        Background: {request.Background}
-        Motivation: {request.Motivation}
-
-        Include:
-        1. Name and physical description
-        2. Personality traits and quirks
-        3. Background and expertise
-        4. Goals and motivations
-        5. Internal conflicts
-        6. Relationships with other characters
-        7. Character arc potential
-
-        Make them three-dimensional, flawed, and interesting. Avoid clichés.
-        """;
-
-    var response = await llm.CompleteAsync(new LlmRequest
+    if (!stories.TryGetValue(storyId, out var story))
     {
-        Prompt = prompt,
-        Temperature = 0.85,
-        MaxTokens = 1500
-    });
-
-    if (!response.Success)
-    {
-        return Results.Problem(response.ErrorMessage);
+        return Results.NotFound("Story not found");
     }
 
-    return Results.Ok(new
+    // Build context from previous selections
+    var context = new StringBuilder();
+    if (!string.IsNullOrEmpty(story.SelectedBeats))
     {
-        character = response.Content,
-        model = response.BackendUsed,
-        tokens = response.TotalTokens
-    });
-});
-
-// Write a scene
-app.MapPost("/scene", async (SceneRequest request, ILlmService llm) =>
-{
-    var contextInfo = "";
-    if (!string.IsNullOrEmpty(request.StoryId) && stories.TryGetValue(request.StoryId, out var story))
-    {
-        contextInfo = $"""
-
-            Story Context:
-            {story.Outline}
-
-            Previous Scenes:
-            {string.Join("\n\n---\n\n", story.Scenes.TakeLast(2))}
-            """;
+        context.AppendLine("Story Beats:");
+        context.AppendLine(story.SelectedBeats);
+        context.AppendLine();
     }
 
-    var prompt = $"""
-        Write a compelling sci-fi scene with the following parameters:
+    if (story.Pages.Any())
+    {
+        context.AppendLine("Story so far:");
+        foreach (var page in story.Pages)
+        {
+            context.AppendLine($"\n--- Page {page.PageNumber} ---");
+            context.AppendLine(page.SelectedText);
+        }
+        context.AppendLine();
+    }
 
-        Scene Description: {request.Description}
-        Point of View: {request.PointOfView ?? "Third person limited"}
-        Mood: {request.Mood ?? "Tense"}
-        Length: {request.WordCount ?? 500} words
-        {contextInfo}
+    var pageNumber = story.Pages.Count + 1;
+    var prompt = $"""
+        You are writing a sci-fi story. Here's the context:
+
+        {context}
+
+        Now write page {pageNumber} of the story.
 
         Requirements:
-        - Show, don't tell
-        - Use vivid sensory details
-        - Include believable dialogue if appropriate
-        - Maintain internal consistency with the story world
-        - Build tension and conflict
-        - End with a hook or transition
+        - Continue naturally from previous pages
+        - Write 300-400 words
+        - End with a hook for the next page
+        - Match the tone: {story.Tone}
+        - Setting: {story.Setting}
 
-        Write the scene now:
+        Write ONLY the story text for this page. No meta-commentary.
         """;
 
-    var response = await llm.CompleteAsync(new LlmRequest
+    var llmRequest = new LlmRequest
     {
         Prompt = prompt,
         Temperature = 0.9,
-        MaxTokens = (request.WordCount ?? 500) * 2 // Rough token estimate
-    });
+        MaxTokens = 600
+    };
+
+    var response = await llm.CompleteAsync(llmRequest);
 
     if (!response.Success)
     {
-        return Results.Problem(response.ErrorMessage);
+        return Results.Problem("Failed to generate page");
     }
 
-    // Add scene to story if ID provided
-    if (!string.IsNullOrEmpty(request.StoryId) && stories.TryGetValue(request.StoryId, out var storyToUpdate))
+    // Collect all variations
+    var variations = new List<PageVariation>
     {
-        storyToUpdate.Scenes.Add(response.Content ?? "");
-    }
-
-    // Calculate cost
-    decimal? cost = null;
-    if (response.PromptTokens.HasValue && response.CompletionTokens.HasValue)
-    {
-        var backend = response.BackendUsed ?? "";
-        if (backend.Contains("claude"))
+        new()
         {
-            cost = (response.PromptTokens.Value * 3.00m / 1_000_000m) +
-                  (response.CompletionTokens.Value * 15.00m / 1_000_000m);
+            Backend = response.Backend ?? "unknown",
+            Model = response.Model ?? "unknown",
+            Text = response.Content ?? "",
+            TokensUsed = response.TotalTokens ?? 0,
+            DurationMs = response.DurationMs
         }
-        else if (backend.Contains("gpt4o"))
+    };
+
+    if (response.AlternativeResponses != null)
+    {
+        foreach (var alt in response.AlternativeResponses.Where(r => r.Success))
         {
-            cost = (response.PromptTokens.Value * 5.00m / 1_000_000m) +
-                  (response.CompletionTokens.Value * 15.00m / 1_000_000m);
+            variations.Add(new PageVariation
+            {
+                Backend = alt.Backend ?? "unknown",
+                Model = alt.Model ?? "unknown",
+                Text = alt.Content ?? "",
+                TokensUsed = alt.TotalTokens ?? 0,
+                DurationMs = alt.DurationMs
+            });
         }
     }
 
     return Results.Ok(new
     {
-        scene = response.Content,
-        model = response.BackendUsed,
-        tokens = response.TotalTokens,
-        cost
+        pageNumber,
+        variations,
+        totalPages = story.Pages.Count,
+        message = $"Page {pageNumber} generated with {variations.Count} variations! Select your favorite."
     });
 });
 
-// Get story
-app.MapGet("/stories/{id}", (string id) =>
+// Select a page variation and add to story
+app.MapPost("/select/{storyId}/page", (string storyId, SelectionRequest request) =>
 {
-    if (stories.TryGetValue(id, out var story))
+    if (!stories.TryGetValue(storyId, out var story))
     {
-        return Results.Ok(story);
+        return Results.NotFound("Story not found");
     }
-    return Results.NotFound();
+
+    var page = new StoryPage
+    {
+        PageNumber = story.Pages.Count + 1,
+        SelectedText = request.SelectedText,
+        SelectedBackend = request.Backend,
+        SelectedModel = request.Model
+    };
+
+    story.Pages.Add(page);
+    story.UpdatedAt = DateTime.UtcNow;
+
+    return Results.Ok(new
+    {
+        success = true,
+        pageNumber = page.PageNumber,
+        totalPages = story.Pages.Count,
+        message = $"Page {page.PageNumber} added! Story now has {story.Pages.Count} page(s)."
+    });
 });
 
-// Creative prompts library
-app.MapGet("/prompts", () =>
+// Select story beats
+app.MapPost("/select/{storyId}/beats", (string storyId, SelectionRequest request) =>
 {
-    var prompts = new
+    if (!stories.TryGetValue(storyId, out var story))
     {
-        themes = new[] {
-            "First Contact",
-            "Post-Scarcity Society",
-            "Artificial Intelligence Rights",
-            "Climate Engineering",
-            "Quantum Computing",
-            "Generation Ships",
-            "Memory Upload",
-            "Time Dilation",
-            "Dyson Sphere",
-            "Fermi Paradox"
-        },
-        settings = new[] {
-            "Mars Colony (2150)",
-            "Europa Research Station",
-            "Ringworld Megastructure",
-            "Asteroid Mining Belt",
-            "Post-Singularity Earth",
-            "Interstellar Ark Ship",
-            "Virtual Reality Collective",
-            "Lunar Manufacturing Hub"
-        },
-        conflicts = new[] {
-            "Human vs. AI Ethics",
-            "Resource Scarcity in Space",
-            "Cultural Clash (Earth vs. Colonists)",
-            "Corporate Exploitation",
-            "Scientific Discovery with Consequences",
-            "Rebellion Against Control",
-            "First Contact Misunderstanding"
-        }
-    };
-    return Results.Ok(prompts);
+        return Results.NotFound("Story not found");
+    }
+
+    story.SelectedBeats = request.SelectedText;
+    story.UpdatedAt = DateTime.UtcNow;
+
+    return Results.Ok(new
+    {
+        success = true,
+        message = "Story beats selected! Now start writing pages."
+    });
+});
+
+// Export final story as markdown
+app.MapGet("/export/{storyId}", (string storyId) =>
+{
+    if (!stories.TryGetValue(storyId, out var story))
+    {
+        return Results.NotFound("Story not found");
+    }
+
+    var markdown = new StringBuilder();
+
+    // Title and metadata
+    markdown.AppendLine("# Sci-Fi Story");
+    markdown.AppendLine();
+    markdown.AppendLine($"**Genre:** {story.Genre}  ");
+    markdown.AppendLine($"**Themes:** {string.Join(", ", story.Themes)}  ");
+    markdown.AppendLine($"**Setting:** {story.Setting}  ");
+    markdown.AppendLine($"**Tone:** {story.Tone}  ");
+    markdown.AppendLine();
+    markdown.AppendLine("---");
+    markdown.AppendLine();
+
+    // Story beats
+    if (!string.IsNullOrEmpty(story.SelectedBeats))
+    {
+        markdown.AppendLine("## Story Beats");
+        markdown.AppendLine();
+        markdown.AppendLine(story.SelectedBeats);
+        markdown.AppendLine();
+        markdown.AppendLine("---");
+        markdown.AppendLine();
+    }
+
+    // Story content
+    markdown.AppendLine("## The Story");
+    markdown.AppendLine();
+
+    foreach (var page in story.Pages.OrderBy(p => p.PageNumber))
+    {
+        markdown.AppendLine(page.SelectedText);
+        markdown.AppendLine();
+        markdown.AppendLine("---");
+        markdown.AppendLine();
+    }
+
+    // Metadata footer
+    markdown.AppendLine("## Story Metadata");
+    markdown.AppendLine();
+    markdown.AppendLine($"- **Total Pages:** {story.Pages.Count}");
+    markdown.AppendLine($"- **Created:** {story.CreatedAt:yyyy-MM-dd HH:mm:ss} UTC");
+    markdown.AppendLine($"- **Last Updated:** {story.UpdatedAt:yyyy-MM-dd HH:mm:ss} UTC");
+    markdown.AppendLine();
+    markdown.AppendLine("### Models Used");
+    var modelsUsed = story.Pages
+        .GroupBy(p => $"{p.SelectedBackend} ({p.SelectedModel})")
+        .Select(g => $"- {g.Key}: {g.Count()} page(s)")
+        .ToList();
+    foreach (var model in modelsUsed)
+    {
+        markdown.AppendLine(model);
+    }
+
+    return Results.Text(markdown.ToString(), "text/markdown");
+});
+
+// Get story status
+app.MapGet("/story/{storyId}", (string storyId) =>
+{
+    if (!stories.TryGetValue(storyId, out var story))
+    {
+        return Results.NotFound("Story not found");
+    }
+
+    return Results.Ok(new
+    {
+        story.Id,
+        story.Genre,
+        story.Themes,
+        story.Setting,
+        story.Tone,
+        hasBeats = !string.IsNullOrEmpty(story.SelectedBeats),
+        pageCount = story.Pages.Count,
+        pages = story.Pages.Select(p => new
+        {
+            p.PageNumber,
+            preview = p.SelectedText.Length > 100
+                ? p.SelectedText.Substring(0, 100) + "..."
+                : p.SelectedText,
+            p.SelectedBackend,
+            p.SelectedModel
+        }),
+        story.CreatedAt,
+        story.UpdatedAt
+    });
+});
+
+// List all stories
+app.MapGet("/stories", () =>
+{
+    var allStories = stories.Values
+        .OrderByDescending(s => s.UpdatedAt)
+        .Select(s => new
+        {
+            s.Id,
+            s.Genre,
+            s.Setting,
+            pageCount = s.Pages.Count,
+            s.CreatedAt,
+            s.UpdatedAt
+        });
+
+    return Results.Ok(allStories);
 });
 
 // Welcome page
@@ -324,179 +446,207 @@ app.MapGet("/", () => Results.Content("""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Sci-Fi Story Writer</title>
+        <title>Collaborative Sci-Fi Story Writer</title>
         <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #00ff00; }
-            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-            header { border: 2px solid #00ff00; padding: 20px; margin-bottom: 20px; }
-            h1 { font-size: 32px; text-shadow: 0 0 10px #00ff00; }
-            .section { border: 1px solid #00ff00; padding: 20px; margin: 20px 0; background: #0f0f0f; }
-            button { background: #00ff00; color: #0a0a0a; border: none; padding: 10px 20px; font-family: 'Courier New', monospace; cursor: pointer; font-weight: bold; }
-            button:hover { background: #00cc00; box-shadow: 0 0 10px #00ff00; }
-            textarea { width: 100%; background: #0a0a0a; color: #00ff00; border: 1px solid #00ff00; padding: 10px; font-family: 'Courier New', monospace; resize: vertical; }
-            input, select { background: #0a0a0a; color: #00ff00; border: 1px solid #00ff00; padding: 8px; font-family: 'Courier New', monospace; }
-            .output { white-space: pre-wrap; line-height: 1.6; }
-            .label { color: #00ffff; margin-top: 10px; margin-bottom: 5px; }
-            .cost { color: #ffff00; }
+            body {
+                font-family: 'Courier New', monospace;
+                background: #0a0e27;
+                color: #00ff00;
+                max-width: 1200px;
+                margin: 20px auto;
+                padding: 20px;
+            }
+            .terminal {
+                background: #000;
+                border: 2px solid #00ff00;
+                border-radius: 5px;
+                padding: 20px;
+                margin: 20px 0;
+            }
+            h1, h2 {
+                color: #00ffff;
+                text-shadow: 0 0 10px #00ffff;
+            }
+            .variation {
+                background: #1a1a2e;
+                border: 1px solid #00ff00;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 5px;
+            }
+            .step {
+                background: #16213e;
+                padding: 15px;
+                margin: 15px 0;
+                border-left: 4px solid #00ffff;
+            }
+            code {
+                background: #2a2a3e;
+                padding: 2px 6px;
+                border-radius: 3px;
+                color: #00ffff;
+            }
+            .highlight {
+                color: #ffff00;
+                font-weight: bold;
+            }
+            pre {
+                background: #1a1a1a;
+                padding: 15px;
+                border-radius: 5px;
+                overflow-x: auto;
+                border: 1px solid #00ff00;
+            }
         </style>
     </head>
     <body>
-        <div class="container">
-            <header>
-                <h1>⚡ SCI-FI STORY WRITER ⚡</h1>
-                <p>AI-Powered Creative Writing Tool</p>
-                <p style="margin-top: 10px;">Models: Claude 3.5 Sonnet | GPT-4o | Llama 3 (Local)</p>
-            </header>
-
-            <div class="section">
-                <h2>📖 Generate Story Outline</h2>
-                <div class="label">Genre:</div>
-                <input type="text" id="genre" placeholder="Hard Science Fiction" style="width: 100%;">
-                <div class="label">Themes (comma-separated):</div>
-                <input type="text" id="themes" placeholder="AI consciousness, space exploration, ethics" style="width: 100%;">
-                <div class="label">Setting:</div>
-                <input type="text" id="setting" placeholder="Near-future Mars colony" style="width: 100%;">
-                <div class="label">Tone:</div>
-                <input type="text" id="tone" placeholder="Thoughtful and optimistic" style="width: 100%;">
-                <br><br>
-                <button onclick="generateOutline()">Generate Outline</button>
-                <div class="label" style="margin-top: 20px;">Output:</div>
-                <div id="outline-output" class="output"></div>
-            </div>
-
-            <div class="section">
-                <h2>👤 Create Character</h2>
-                <div class="label">Role:</div>
-                <input type="text" id="char-role" placeholder="Brilliant but isolated xenobiologist" style="width: 100%;">
-                <div class="label">Background:</div>
-                <input type="text" id="char-background" placeholder="Grew up on Europa station" style="width: 100%;">
-                <div class="label">Motivation:</div>
-                <input type="text" id="char-motivation" placeholder="Prove life exists beyond Earth" style="width: 100%;">
-                <br><br>
-                <button onclick="generateCharacter()">Create Character</button>
-                <div class="label" style="margin-top: 20px;">Output:</div>
-                <div id="character-output" class="output"></div>
-            </div>
-
-            <div class="section">
-                <h2>✍️ Write Scene</h2>
-                <div class="label">Scene Description:</div>
-                <textarea id="scene-desc" rows="3" placeholder="The crew discovers an alien artifact that defies physics..."></textarea>
-                <div class="label">Point of View:</div>
-                <input type="text" id="scene-pov" placeholder="Third person limited" style="width: 100%;">
-                <div class="label">Mood:</div>
-                <input type="text" id="scene-mood" placeholder="Tense, mysterious" style="width: 100%;">
-                <div class="label">Word Count:</div>
-                <input type="number" id="scene-words" value="500" style="width: 200px;">
-                <br><br>
-                <button onclick="generateScene()">Write Scene</button>
-                <div class="label" style="margin-top: 20px;">Output:</div>
-                <div id="scene-output" class="output"></div>
-                <div id="scene-cost" class="cost"></div>
-            </div>
-
-            <div class="section">
-                <h2>📚 Quick Prompts</h2>
-                <button onclick="loadPrompts()">Load Creative Prompts</button>
-                <div id="prompts-output" class="output" style="margin-top: 10px;"></div>
-            </div>
+        <div class="terminal">
+            <h1>🚀 Collaborative Sci-Fi Story Writer</h1>
+            <p class="highlight">Powered by Simultaneous Multi-LLM Strategy (NEW!)</p>
         </div>
 
-        <script>
-            async function generateOutline() {
-                const output = document.getElementById('outline-output');
-                output.textContent = 'Generating...';
+        <h2>✨ What Makes This Special?</h2>
+        <div class="terminal">
+            <p><strong class="highlight">Simultaneous Strategy:</strong> Get 3 different creative versions from 3 different LLMs in parallel!</p>
+            <ul>
+                <li>Claude 3.5 Sonnet - Best for nuanced, literary fiction</li>
+                <li>GPT-4o - Great for plot structure and pacing</li>
+                <li>Llama 3 - Free local alternative</li>
+            </ul>
+            <p>Each model brings its own creative style. You pick the best parts from each!</p>
+        </div>
 
-                try {
-                    const response = await fetch('/outline', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            genre: document.getElementById('genre').value || "Hard Science Fiction",
-                            themes: (document.getElementById('themes').value || "AI, space").split(',').map(t => t.trim()),
-                            setting: document.getElementById('setting').value || "Near-future",
-                            tone: document.getElementById('tone').value || "Thoughtful"
-                        })
-                    });
+        <h2>📖 How It Works</h2>
 
-                    const data = await response.json();
-                    output.textContent = `[Generated by ${data.model}]\n\n${data.outline}`;
-                } catch (error) {
-                    output.textContent = `Error: ${error.message}`;
-                }
-            }
+        <div class="step">
+            <strong>Step 1: Generate Story Beats</strong>
+            <p>Get 3 different outline variations. Select your favorite.</p>
+            <pre>POST /beats
+{
+  "genre": "Cyberpunk",
+  "themes": ["AI consciousness", "corporate dystopia"],
+  "setting": "Neo-Tokyo 2157",
+  "tone": "Dark and gritty"
+}</pre>
+        </div>
 
-            async function generateCharacter() {
-                const output = document.getElementById('character-output');
-                output.textContent = 'Generating...';
+        <div class="step">
+            <strong>Step 2: Write Pages (Iteratively)</strong>
+            <p>For each page, get 3 versions. Pick your favorite. The next page builds on your choice!</p>
+            <pre>POST /page/{storyId}
 
-                try {
-                    const response = await fetch('/character', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            role: document.getElementById('char-role').value || "Scientist",
-                            background: document.getElementById('char-background').value || "Unknown",
-                            motivation: document.getElementById('char-motivation').value || "Discovery"
-                        })
-                    });
+# Select the version you like best
+POST /select/{storyId}/page
+{
+  "selectedText": "... the text you chose ...",
+  "backend": "claude-writer",
+  "model": "claude-3-5-sonnet-20241022"
+}</pre>
+        </div>
 
-                    const data = await response.json();
-                    output.textContent = `[Generated by ${data.model}]\n\n${data.character}`;
-                } catch (error) {
-                    output.textContent = `Error: ${error.message}`;
-                }
-            }
+        <div class="step">
+            <strong>Step 3: Repeat & Build</strong>
+            <p>Each new page sees all previous selections. The story grows organically!</p>
+        </div>
 
-            async function generateScene() {
-                const output = document.getElementById('scene-output');
-                const costDiv = document.getElementById('scene-cost');
-                output.textContent = 'Writing...';
-                costDiv.textContent = '';
+        <div class="step">
+            <strong>Step 4: Export as Markdown</strong>
+            <p>Get your complete story as beautiful markdown.</p>
+            <pre>GET /export/{storyId}</pre>
+        </div>
 
-                try {
-                    const response = await fetch('/scene', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            description: document.getElementById('scene-desc').value || "A discovery",
-                            pointOfView: document.getElementById('scene-pov').value,
-                            mood: document.getElementById('scene-mood').value,
-                            wordCount: parseInt(document.getElementById('scene-words').value) || 500
-                        })
-                    });
+        <h2>🎯 Example Workflow</h2>
+        <div class="terminal">
+            <pre>
+# 1. Generate beats
+curl -X POST http://localhost:5000/beats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "genre": "Hard Sci-Fi",
+    "themes": ["First contact", "quantum physics"],
+    "setting": "Deep space research station",
+    "tone": "Mysterious and scientific"
+  }'
 
-                    const data = await response.json();
-                    output.textContent = `[Generated by ${data.model}]\n\n${data.scene}`;
+# Returns 3 beat variations - pick one
+# Response: { "storyId": "abc-123", "variations": [...] }
 
-                    if (data.cost) {
-                        costDiv.textContent = `Cost: $${data.cost.toFixed(6)} | Tokens: ${data.tokens}`;
-                    } else {
-                        costDiv.textContent = `FREE | Tokens: ${data.tokens || 'N/A'}`;
-                    }
-                } catch (error) {
-                    output.textContent = `Error: ${error.message}`;
-                }
-            }
+# 2. Select your favorite beats
+curl -X POST http://localhost:5000/select/abc-123/beats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "selectedText": "1. Scientists detect strange signal...",
+    "backend": "gpt4o-plotter",
+    "model": "gpt-4o"
+  }'
 
-            async function loadPrompts() {
-                const output = document.getElementById('prompts-output');
+# 3. Generate first page (gets 3 versions)
+curl -X POST http://localhost:5000/page/abc-123
 
-                try {
-                    const response = await fetch('/prompts');
-                    const data = await response.json();
+# 4. Select best version for page 1
+curl -X POST http://localhost:5000/select/abc-123/page \
+  -H "Content-Type: application/json" \
+  -d '{
+    "selectedText": "Dr. Sarah Chen stared at the readout...",
+    "backend": "claude-writer",
+    "model": "claude-3-5-sonnet-20241022"
+  }'
 
-                    output.innerHTML = `
-                        <strong>THEMES:</strong><br>${data.themes.join(', ')}<br><br>
-                        <strong>SETTINGS:</strong><br>${data.settings.join(', ')}<br><br>
-                        <strong>CONFLICTS:</strong><br>${data.conflicts.join(', ')}
-                    `;
-                } catch (error) {
-                    output.textContent = `Error: ${error.message}`;
-                }
-            }
-        </script>
+# 5. Repeat steps 3-4 for each page
+
+# 6. Export final story
+curl http://localhost:5000/export/abc-123 > my-story.md
+            </pre>
+        </div>
+
+        <h2>🔥 Why This is Awesome</h2>
+        <div class="terminal">
+            <ul>
+                <li><strong>Creative Diversity:</strong> Different models = different styles!</li>
+                <li><strong>Cherry-pick Best Ideas:</strong> Take Claude's prose, GPT-4o's plot</li>
+                <li><strong>Cumulative Context:</strong> Each page builds on your choices</li>
+                <li><strong>Cost Conscious:</strong> $5 daily budgets prevent overspend</li>
+                <li><strong>Local Fallback:</strong> Llama 3 is free (if you have Ollama)</li>
+                <li><strong>Markdown Export:</strong> Beautiful final stories</li>
+            </ul>
+        </div>
+
+        <h2>📋 API Endpoints</h2>
+        <div class="terminal">
+            <ul>
+                <li><code>POST /beats</code> - Generate story beats (3 variations)</li>
+                <li><code>POST /select/{id}/beats</code> - Select favorite beats</li>
+                <li><code>POST /page/{id}</code> - Generate next page (3 variations)</li>
+                <li><code>POST /select/{id}/page</code> - Select favorite page version</li>
+                <li><code>GET /story/{id}</code> - Get story status and content</li>
+                <li><code>GET /export/{id}</code> - Export complete story as markdown</li>
+                <li><code>GET /stories</code> - List all stories</li>
+            </ul>
+        </div>
+
+        <h2>🚀 Setup</h2>
+        <div class="terminal">
+            <pre>
+# Set API keys
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...
+
+# Start Ollama (optional, for free local model)
+ollama pull llama3
+ollama serve
+
+# Run the app
+cd examples/03-SciFiStoryWriter
+dotnet run
+
+# Start writing!
+# Visit http://localhost:5000 for this guide
+            </pre>
+        </div>
+
+        <p style="text-align: center; margin-top: 40px; color: #888;">
+            <small>Powered by mostlylucid.llmbackend v2.0 - Simultaneous Strategy</small>
+        </p>
     </body>
     </html>
     """, "text/html"));
@@ -504,32 +654,59 @@ app.MapGet("/", () => Results.Content("""
 app.Run();
 
 // Models
-record OutlineRequest
-{
-    public string? Genre { get; init; }
-    public string[]? Themes { get; init; }
-    public string? Setting { get; init; }
-    public string? Tone { get; init; }
-}
-record CharacterRequest
-{
-    public required string Role { get; init; }
-    public required string Background { get; init; }
-    public required string Motivation { get; init; }
-}
-record SceneRequest
-{
-    public required string Description { get; init; }
-    public string? PointOfView { get; init; }
-    public string? Mood { get; init; }
-    public int? WordCount { get; init; }
-    public string? StoryId { get; init; }
-}
+record BeatsRequest(
+    string Genre,
+    List<string> Themes,
+    string Setting,
+    string Tone
+);
+
+record PageRequest(
+    string Instruction
+);
+
+record SelectionRequest(
+    string SelectedText,
+    string Backend,
+    string Model
+);
+
 class Story
 {
-    public required string Id { get; init; }
-    public required string Outline { get; init; }
-    public List<string> Scenes { get; init; } = new();
-    public required string CreatedWith { get; init; }
-    public required OutlineRequest Metadata { get; init; }
+    public string Id { get; set; } = string.Empty;
+    public string Genre { get; set; } = string.Empty;
+    public List<string> Themes { get; set; } = new();
+    public string Setting { get; set; } = string.Empty;
+    public string Tone { get; set; } = string.Empty;
+    public List<BeatVariation> BeatVariations { get; set; } = new();
+    public string? SelectedBeats { get; set; }
+    public List<StoryPage> Pages { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+class BeatVariation
+{
+    public string Backend { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public string Beats { get; set; } = string.Empty;
+    public int TokensUsed { get; set; }
+    public long DurationMs { get; set; }
+}
+
+class PageVariation
+{
+    public string Backend { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public int TokensUsed { get; set; }
+    public long DurationMs { get; set; }
+}
+
+class StoryPage
+{
+    public int PageNumber { get; set; }
+    public string SelectedText { get; set; } = string.Empty;
+    public string SelectedBackend { get; set; } = string.Empty;
+    public string SelectedModel { get; set; } = string.Empty;
 }

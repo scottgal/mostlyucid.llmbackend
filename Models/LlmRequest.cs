@@ -115,6 +115,22 @@ public class LlmResponse
     /// Exception if any
     /// </summary>
     public Exception? Exception { get; set; }
+
+    /// <summary>
+    /// Alternative responses from other backends (used with Simultaneous strategy)
+    /// </summary>
+    /// <remarks>
+    /// When using BackendSelectionStrategy.Simultaneous, this property contains
+    /// responses from all other backends that were called in parallel.
+    /// The main response is in the Text property, and alternatives are here.
+    /// Useful for creative tasks where you want to compare multiple model outputs.
+    /// </remarks>
+    public List<LlmResponse>? AlternativeResponses { get; set; }
+
+    /// <summary>
+    /// Helper property for easy access to response text (alias for Text)
+    /// </summary>
+    public string? Content => Text;
 }
 
 /// <summary>

@@ -741,7 +741,18 @@ public enum BackendSelectionStrategy
     /// <summary>
     /// Randomly select a backend
     /// </summary>
-    Random
+    Random,
+
+    /// <summary>
+    /// Send request to multiple backends simultaneously and return all responses
+    /// </summary>
+    /// <remarks>
+    /// Useful for creative tasks where you want to compare outputs from different models.
+    /// All enabled backends will be called in parallel, and all successful responses
+    /// will be returned. This allows users to choose the best version.
+    /// Note: This will consume API quota/budget from all backends used.
+    /// </remarks>
+    Simultaneous
 }
 
 /// <summary>
