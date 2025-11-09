@@ -86,10 +86,9 @@ public class GeminiLlmBackend : BaseLlmBackend
             Temperature = request.Temperature,
             MaxTokens = request.MaxTokens,
             TopP = request.TopP,
-            Stop = request.Stop,
+            StopSequences = request.StopSequences,
             Stream = request.Stream,
-            BackendName = request.BackendName,
-            Context = request.Context
+            PreferredBackend = request.PreferredBackend
         };
 
         return await ChatAsync(chatRequest, cancellationToken);
@@ -120,7 +119,7 @@ public class GeminiLlmBackend : BaseLlmBackend
                     temperature = request.Temperature ?? Config.Temperature ?? 0.7,
                     topP = request.TopP ?? Config.TopP,
                     maxOutputTokens = request.MaxTokens ?? Config.MaxOutputTokens ?? 2000,
-                    stopSequences = request.Stop ?? Config.StopSequences
+                    stopSequences = request.StopSequences ?? Config.StopSequences
                 }
             };
 
