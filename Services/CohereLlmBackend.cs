@@ -110,11 +110,11 @@ public class CohereLlmBackend : BaseLlmBackend
 
             return new LlmResponse
             {
-                Content = cohereResponse.Generations?.FirstOrDefault()?.Text ?? string.Empty,
-                BackendUsed = Name,
+                Text = cohereResponse.Generations?.FirstOrDefault()?.Text ?? string.Empty,
+                Backend = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = Config.ModelName ?? DefaultModel,
+                Model = Config.ModelName ?? DefaultModel,
                 PromptTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0,
                 CompletionTokens = cohereResponse.Meta?.BilledUnits?.OutputTokens ?? 0,
                 TotalTokens = (cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0) +
@@ -204,11 +204,11 @@ public class CohereLlmBackend : BaseLlmBackend
 
             return new LlmResponse
             {
-                Content = cohereResponse.Text ?? string.Empty,
-                BackendUsed = Name,
+                Text = cohereResponse.Text ?? string.Empty,
+                Backend = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = Config.ModelName ?? DefaultModel,
+                Model = Config.ModelName ?? DefaultModel,
                 PromptTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0,
                 CompletionTokens = cohereResponse.Meta?.BilledUnits?.OutputTokens ?? 0,
                 TotalTokens = (cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0) +

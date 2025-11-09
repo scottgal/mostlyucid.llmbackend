@@ -166,11 +166,11 @@ public class GeminiLlmBackend : BaseLlmBackend
 
             return new LlmResponse
             {
-                Content = textContent,
-                BackendUsed = Name,
+                Text = textContent,
+                Backend = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = Config.ModelName ?? DefaultModel,
+                Model = Config.ModelName ?? DefaultModel,
                 PromptTokens = geminiResponse.UsageMetadata?.PromptTokenCount ?? 0,
                 CompletionTokens = geminiResponse.UsageMetadata?.CandidatesTokenCount ?? 0,
                 TotalTokens = geminiResponse.UsageMetadata?.TotalTokenCount ?? 0,

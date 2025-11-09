@@ -90,10 +90,9 @@ public class AnthropicLlmBackend : BaseLlmBackend
             TopP = request.TopP,
             FrequencyPenalty = request.FrequencyPenalty,
             PresencePenalty = request.PresencePenalty,
-            Stop = request.Stop,
+            StopSequences = request.StopSequences,
             Stream = request.Stream,
-            BackendName = request.BackendName,
-            Context = request.Context
+            PreferredBackend = request.PreferredBackend
         };
 
         return await ChatAsync(chatRequest, cancellationToken);
@@ -130,7 +129,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
                 max_tokens = request.MaxTokens ?? Config.MaxOutputTokens ?? 2000,
                 temperature = request.Temperature ?? Config.Temperature ?? 0.7,
                 top_p = request.TopP ?? Config.TopP,
-                stop_sequences = request.Stop ?? Config.StopSequences,
+                stop_sequences = request.StopSequences ?? Config.StopSequences,
                 stream = request.Stream && Config.EnableStreaming
             };
 
@@ -169,11 +168,11 @@ public class AnthropicLlmBackend : BaseLlmBackend
 
             return new LlmResponse
             {
-                Content = anthropicResponse.Content?.FirstOrDefault()?.Text ?? string.Empty,
-                BackendUsed = Name,
+                Text = anthropicResponse.Content?.FirstOrDefault()?.Text ?? string.Empty,
+                Backend = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = Config.ModelName ?? DefaultModel,
+                Model = Config.ModelName ?? DefaultModel,
                 PromptTokens = anthropicResponse.Usage?.InputTokens ?? 0,
                 CompletionTokens = anthropicResponse.Usage?.OutputTokens ?? 0,
                 TotalTokens = (anthropicResponse.Usage?.InputTokens ?? 0) + (anthropicResponse.Usage?.OutputTokens ?? 0),
