@@ -15,7 +15,8 @@ public class OllamaLlmBackend : BaseLlmBackend
     public OllamaLlmBackend(
         LlmBackendConfig config,
         ILogger<OllamaLlmBackend> logger,
-        HttpClient httpClient) : base(config, logger, httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null) : base(config, logger, httpClient, telemetry)
     {
     }
 

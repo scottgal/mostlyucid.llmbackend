@@ -15,7 +15,8 @@ public class EasyNMTBackend : BaseLlmBackend
     public EasyNMTBackend(
         LlmBackendConfig config,
         ILogger<EasyNMTBackend> logger,
-        HttpClient httpClient) : base(config, logger, httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null) : base(config, logger, httpClient, telemetry)
     {
     }
 

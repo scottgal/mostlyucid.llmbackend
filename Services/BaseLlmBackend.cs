@@ -14,6 +14,7 @@ public abstract class BaseLlmBackend : ILlmBackend
     protected readonly LlmBackendConfig Config;
     protected readonly ILogger Logger;
     protected readonly HttpClient HttpClient;
+    protected readonly TelemetryConfig? Telemetry;
 
     private readonly ConcurrentBag<long> _latencies = new();
     private int _successfulRequests;
@@ -24,12 +25,22 @@ public abstract class BaseLlmBackend : ILlmBackend
     protected BaseLlmBackend(
         LlmBackendConfig config,
         ILogger logger,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null)
     {
         Config = config;
         Logger = logger;
         HttpClient = httpClient;
+        Telemetry = telemetry;
         ConfigureHttpClient();
+    }
+
+    /// <summary>
+    /// Check if a specific telemetry feature is enabled
+    /// </summary>
+    protected bool IsTelemetryEnabled(Func<TelemetryConfig, bool> predicate)
+    {
+        return Telemetry != null && predicate(Telemetry);
     }
 
     public string Name => Config.Name;
@@ -93,6 +104,30 @@ public abstract class BaseLlmBackend : ILlmBackend
     {
         RecordSuccess(durationMs);
 
+        // Record Prometheus metrics if enabled
+        if (Telemetry?.EnableMetrics == true && promptTokens.HasValue && completionTokens.HasValue)
+        {
+            var modelName = model ?? Config.ModelName ?? "unknown";
+
+            // Calculate estimated cost if pricing is configured
+            decimal? estimatedCost = null;
+            if (Config.CostPerMillionInputTokens.HasValue && Config.CostPerMillionOutputTokens.HasValue)
+            {
+                estimatedCost = (promptTokens.Value * Config.CostPerMillionInputTokens.Value / 1_000_000m) +
+                              (completionTokens.Value * Config.CostPerMillionOutputTokens.Value / 1_000_000m);
+            }
+
+            LlmMetrics.RecordSuccess(
+                Name,
+                modelName,
+                durationMs,
+                promptTokens.Value,
+                completionTokens.Value,
+                estimatedCost);
+
+            LlmMetrics.DecrementActiveRequests(Name);
+        }
+
         return new LlmResponse
         {
             Success = true,
@@ -110,6 +145,16 @@ public abstract class BaseLlmBackend : ILlmBackend
     protected LlmResponse CreateErrorResponse(string error, Exception? exception = null)
     {
         RecordFailure(error);
+
+        // Record Prometheus metrics if enabled
+        if (Telemetry?.EnableMetrics == true)
+        {
+            var modelName = Config.ModelName ?? "unknown";
+            var errorType = LlmMetrics.CategorizeError(error);
+
+            LlmMetrics.RecordFailure(Name, modelName, 0, errorType);
+            LlmMetrics.DecrementActiveRequests(Name);
+        }
 
         return new LlmResponse
         {

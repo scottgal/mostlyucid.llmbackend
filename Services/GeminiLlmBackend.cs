@@ -20,8 +20,9 @@ public class GeminiLlmBackend : BaseLlmBackend
     public GeminiLlmBackend(
         LlmBackendConfig config,
         ILogger<GeminiLlmBackend> logger,
-        HttpClient httpClient)
-        : base(config, logger, httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null)
+        : base(config, logger, httpClient, telemetry)
     {
         ConfigureHttpClient();
     }

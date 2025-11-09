@@ -19,8 +19,9 @@ public class CohereLlmBackend : BaseLlmBackend
     public CohereLlmBackend(
         LlmBackendConfig config,
         ILogger<CohereLlmBackend> logger,
-        HttpClient httpClient)
-        : base(config, logger, httpClient)
+        HttpClient httpClient,
+        TelemetryConfig? telemetry = null)
+        : base(config, logger, httpClient, telemetry)
     {
         ConfigureHttpClient();
     }
