@@ -58,6 +58,28 @@ A robust, production-ready abstraction library for multiple LLM backends with en
   - Function calling/tools (OpenAI, Anthropic)
   - Embeddings generation
 
+### 🔌 Plugin Architecture
+
+The library supports a powerful plugin system that allows you to add custom LLM providers without modifying the core library:
+
+- **Drop-in DLL Plugins** - Simply place plugin DLLs in the `plugins` directory
+- **Custom Providers** - Add support for any LLM provider via plugins
+- **Full Feature Support** - Plugins get automatic failover, retries, caching, monitoring
+- **NuGet Distribution** - Distribute plugins as NuGet packages
+- **Hot Loading** - Load plugins at startup or dynamically at runtime
+
+**Example**: Create a plugin for any LLM provider:
+```csharp
+public class MyCustomPlugin : ILlmBackendPlugin
+{
+    public string PluginId => "com.mycompany.customprovider";
+    public IEnumerable<string> SupportedBackendTypes => new[] { "MyProvider" };
+    // ... implement plugin interface
+}
+```
+
+See [Plugin Development Guide](docs/PLUGIN-DEVELOPMENT.md) for complete documentation.
+
 ## Installation
 
 ```bash
@@ -206,6 +228,13 @@ public class MyService
       "DefaultTokenLimit": 4096,
       "EnableCompression": false,
       "TtlMinutes": 60
+    },
+
+    "Plugins": {
+      "Enabled": true,
+      "PluginDirectory": "plugins",
+      "SearchSubdirectories": true,
+      "LoadOnStartup": true
     },
 
     "Backends": [
@@ -419,6 +448,33 @@ var request = new LlmRequest
 };
 ```
 
+### Using Plugin Backends
+
+Configure and use backends provided by plugins:
+
+```json
+{
+  "Plugins": {
+    "Enabled": true,
+    "PluginDirectory": "plugins"
+  },
+  "Backends": [
+    {
+      "Name": "Mistral-Large",
+      "Type": "OpenAI",
+      "CustomBackendType": "Mistral",
+      "BaseUrl": "https://api.mistral.ai",
+      "ApiKey": "${MISTRAL_API_KEY}",
+      "ModelName": "mistral-large-latest",
+      "Priority": 1,
+      "Enabled": true
+    }
+  ]
+}
+```
+
+The `CustomBackendType` field tells the library to use a plugin-provided backend. The plugin DLL should be in the `plugins` directory.
+
 ## Usage Examples
 
 ### Simple Completion
@@ -608,9 +664,23 @@ dotnet test tests/Mostlyucid.LlmBackend.Tests
 dotnet test tests/Mostlyucid.LlmBackend.IntegrationTests
 ```
 
+## Documentation
+
+### Integration Guides
+- **[LLMApi Integration Guide](docs/INTEGRATION-LLMAPI.md)** - Complete guide for integrating with LLMApi projects
+- **[ResXTranslator Integration Guide](docs/INTEGRATION-RESXTRANSLATOR.md)** - Migration guide for ResXTranslator projects
+- **[Plugin Development Guide](docs/PLUGIN-DEVELOPMENT.md)** - How to create custom LLM backend plugins
+
+### Configuration Examples
+- **[Complete Configuration Example](examples/appsettings.example.json)** - Fully commented configuration template
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Plugin Contributions
+
+We especially welcome plugin contributions for new LLM providers! See the [Plugin Development Guide](docs/PLUGIN-DEVELOPMENT.md) to get started.
 
 ## License
 
