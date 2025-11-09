@@ -81,6 +81,11 @@ public class LlmSettings
     /// Context memory configuration
     /// </summary>
     public MemoryConfig Memory { get; set; } = new();
+
+    /// <summary>
+    /// Plugin configuration
+    /// </summary>
+    public PluginConfig Plugins { get; set; } = new();
 }
 
 /// <summary>
@@ -324,6 +329,12 @@ public class LlmBackendConfig
     /// Type of backend
     /// </summary>
     public LlmBackendType Type { get; set; }
+
+    /// <summary>
+    /// Custom backend type identifier (used for plugin backends)
+    /// Only used when Type is not recognized or for plugin-provided backends
+    /// </summary>
+    public string? CustomBackendType { get; set; }
 
     /// <summary>
     /// Base URL for the backend API
@@ -604,4 +615,35 @@ public enum MemoryProvider
     /// Custom memory provider
     /// </summary>
     Custom
+}
+
+/// <summary>
+/// Plugin configuration for loading external LLM backend providers
+/// </summary>
+public class PluginConfig
+{
+    /// <summary>
+    /// Enable plugin loading
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Directory to search for plugin DLLs
+    /// </summary>
+    public string PluginDirectory { get; set; } = "plugins";
+
+    /// <summary>
+    /// Search subdirectories for plugins
+    /// </summary>
+    public bool SearchSubdirectories { get; set; } = true;
+
+    /// <summary>
+    /// Load plugins on startup
+    /// </summary>
+    public bool LoadOnStartup { get; set; } = true;
+
+    /// <summary>
+    /// List of specific plugin assemblies to load (optional)
+    /// </summary>
+    public List<string>? SpecificPlugins { get; set; }
 }

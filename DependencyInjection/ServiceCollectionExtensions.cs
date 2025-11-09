@@ -25,8 +25,68 @@ public static class ServiceCollectionExtensions
         // Register HTTP client factory for backends
         services.AddHttpClient();
 
-        // Register factory
-        services.AddSingleton<LlmBackendFactory>();
+        // Register plugin loader
+        services.AddSingleton<LlmPluginLoader>(sp =>
+        {
+            var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger<LlmPluginLoader>();
+            var pluginLoader = new LlmPluginLoader(logger);
+
+            var settings = configuration.GetSection(sectionName).Get<LlmSettings>();
+            if (settings?.Plugins?.Enabled == true && settings.Plugins.LoadOnStartup)
+            {
+                var pluginDirectory = settings.Plugins.PluginDirectory;
+
+                // Make path absolute if it's relative
+                if (!Path.IsPathRooted(pluginDirectory))
+                {
+                    pluginDirectory = Path.Combine(AppContext.BaseDirectory, pluginDirectory);
+                }
+
+                if (Directory.Exists(pluginDirectory))
+                {
+                    pluginLoader.LoadPluginsFromDirectory(pluginDirectory);
+                }
+                else
+                {
+                    logger.LogWarning(
+                        "Plugin directory {PluginDirectory} does not exist, skipping plugin loading",
+                        pluginDirectory);
+                }
+
+                // Load specific plugins if configured
+                if (settings.Plugins.SpecificPlugins != null)
+                {
+                    foreach (var pluginPath in settings.Plugins.SpecificPlugins)
+                    {
+                        var fullPath = Path.IsPathRooted(pluginPath)
+                            ? pluginPath
+                            : Path.Combine(AppContext.BaseDirectory, pluginPath);
+
+                        if (File.Exists(fullPath))
+                        {
+                            pluginLoader.LoadPluginFromAssembly(fullPath);
+                        }
+                        else
+                        {
+                            logger.LogWarning("Plugin file {PluginPath} not found", fullPath);
+                        }
+                    }
+                }
+            }
+
+            return pluginLoader;
+        });
+
+        // Register factory with plugin support
+        services.AddSingleton<LlmBackendFactory>(sp =>
+        {
+            var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+            var httpClientFactory = sp.GetRequiredService<System.Net.Http.IHttpClientFactory>();
+            var pluginLoader = sp.GetRequiredService<LlmPluginLoader>();
+
+            return new LlmBackendFactory(loggerFactory, httpClientFactory, pluginLoader);
+        });
 
         // Register context memory
         services.AddSingleton<IContextMemory, InMemoryContextMemory>();

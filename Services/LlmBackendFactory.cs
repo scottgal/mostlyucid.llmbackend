@@ -11,19 +11,37 @@ public class LlmBackendFactory
 {
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly LlmPluginLoader? _pluginLoader;
 
     public LlmBackendFactory(
         ILoggerFactory loggerFactory,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        LlmPluginLoader? pluginLoader = null)
     {
         _loggerFactory = loggerFactory;
         _httpClientFactory = httpClientFactory;
+        _pluginLoader = pluginLoader;
     }
 
     public ILlmBackend CreateBackend(LlmBackendConfig config)
     {
         var httpClient = _httpClientFactory.CreateClient();
 
+        // First, check if a plugin handles this backend type
+        if (!string.IsNullOrEmpty(config.CustomBackendType) && _pluginLoader != null)
+        {
+            var plugin = _pluginLoader.GetPluginForBackendType(config.CustomBackendType);
+            if (plugin != null)
+            {
+                return plugin.CreateBackend(
+                    config.CustomBackendType,
+                    config,
+                    _loggerFactory,
+                    _httpClientFactory);
+            }
+        }
+
+        // Fall back to built-in backend types
         return config.Type switch
         {
             LlmBackendType.OpenAI or LlmBackendType.GenericOpenAI =>
@@ -68,7 +86,8 @@ public class LlmBackendFactory
                     _loggerFactory.CreateLogger<CohereLlmBackend>(),
                     httpClient),
 
-            _ => throw new NotSupportedException($"Backend type {config.Type} is not supported")
+            _ => throw new NotSupportedException($"Backend type {config.Type} is not supported. " +
+                $"If this is a plugin backend, ensure CustomBackendType is set and the plugin is loaded.")
         };
     }
 
