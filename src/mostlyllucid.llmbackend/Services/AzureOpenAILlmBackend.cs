@@ -25,6 +25,11 @@ public class AzureOpenAILlmBackend : BaseLlmBackend
 
         if (!string.IsNullOrEmpty(Config.ApiKey))
         {
+            // Ensure header is set idempotently
+            if (HttpClient.DefaultRequestHeaders.Contains("api-key"))
+            {
+                HttpClient.DefaultRequestHeaders.Remove("api-key");
+            }
             HttpClient.DefaultRequestHeaders.Add("api-key", Config.ApiKey);
         }
     }

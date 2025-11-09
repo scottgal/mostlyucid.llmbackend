@@ -23,7 +23,8 @@ public class AnthropicLlmBackend : BaseLlmBackend
         HttpClient httpClient)
         : base(config, logger, httpClient)
     {
-        ConfigureHttpClient();
+        // Base constructor already calls ConfigureHttpClient via virtual dispatch.
+        // Avoid calling it twice to prevent duplicate headers.
     }
 
     /// <summary>
@@ -33,14 +34,22 @@ public class AnthropicLlmBackend : BaseLlmBackend
     {
         base.ConfigureHttpClient();
 
-        // Add Anthropic API key header
+        // Add Anthropic API key header idempotently
         if (!string.IsNullOrEmpty(Config.ApiKey))
         {
+            if (HttpClient.DefaultRequestHeaders.Contains("x-api-key"))
+            {
+                HttpClient.DefaultRequestHeaders.Remove("x-api-key");
+            }
             HttpClient.DefaultRequestHeaders.Add("x-api-key", Config.ApiKey);
         }
 
-        // Add Anthropic version header
+        // Add Anthropic version header idempotently
         var version = Config.AnthropicVersion ?? DefaultAnthropicVersion;
+        if (HttpClient.DefaultRequestHeaders.Contains("anthropic-version"))
+        {
+            HttpClient.DefaultRequestHeaders.Remove("anthropic-version");
+        }
         HttpClient.DefaultRequestHeaders.Add("anthropic-version", version);
     }
 
@@ -162,20 +171,20 @@ public class AnthropicLlmBackend : BaseLlmBackend
                 return CreateErrorResponse("Failed to deserialize Anthropic response");
             }
 
-            RecordSuccess(stopwatch.ElapsedMilliseconds);
+            var text = anthropicResponse.Content?.FirstOrDefault()?.Text ?? string.Empty;
+            var promptTokens = anthropicResponse.Usage?.InputTokens ?? 0;
+            var completionTokens = anthropicResponse.Usage?.OutputTokens ?? 0;
+            var totalTokens = promptTokens + completionTokens;
+            var finishReason = anthropicResponse.StopReason;
 
-            return new LlmResponse
-            {
-                Text = anthropicResponse.Content?.FirstOrDefault()?.Text ?? string.Empty,
-                Backend = Name,
-                Success = true,
-                DurationMs = stopwatch.ElapsedMilliseconds,
-                Model = Config.ModelName ?? DefaultModel,
-                PromptTokens = anthropicResponse.Usage?.InputTokens ?? 0,
-                CompletionTokens = anthropicResponse.Usage?.OutputTokens ?? 0,
-                TotalTokens = (anthropicResponse.Usage?.InputTokens ?? 0) + (anthropicResponse.Usage?.OutputTokens ?? 0),
-                FinishReason = anthropicResponse.StopReason
-            };
+            return CreateSuccessResponse(
+                text,
+                stopwatch.ElapsedMilliseconds,
+                Config.ModelName ?? DefaultModel,
+                totalTokens,
+                promptTokens,
+                completionTokens,
+                finishReason);
         }
         catch (Exception ex)
         {

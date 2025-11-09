@@ -23,7 +23,8 @@ public class GeminiLlmBackend : BaseLlmBackend
         HttpClient httpClient)
         : base(config, logger, httpClient)
     {
-        ConfigureHttpClient();
+        // Base constructor already calls ConfigureHttpClient via virtual dispatch.
+        // Avoid calling it twice.
     }
 
     /// <summary>
@@ -159,20 +160,19 @@ public class GeminiLlmBackend : BaseLlmBackend
                 .FirstOrDefault()?
                 .Text ?? string.Empty;
 
-            RecordSuccess(stopwatch.ElapsedMilliseconds);
+            var promptTokens = geminiResponse.UsageMetadata?.PromptTokenCount ?? 0;
+            var completionTokens = geminiResponse.UsageMetadata?.CandidatesTokenCount ?? 0;
+            var totalTokens = geminiResponse.UsageMetadata?.TotalTokenCount ?? (promptTokens + completionTokens);
+            var finishReason = geminiResponse.Candidates?.FirstOrDefault()?.FinishReason;
 
-            return new LlmResponse
-            {
-                Text = textContent,
-                Backend = Name,
-                Success = true,
-                DurationMs = stopwatch.ElapsedMilliseconds,
-                Model = Config.ModelName ?? DefaultModel,
-                PromptTokens = geminiResponse.UsageMetadata?.PromptTokenCount ?? 0,
-                CompletionTokens = geminiResponse.UsageMetadata?.CandidatesTokenCount ?? 0,
-                TotalTokens = geminiResponse.UsageMetadata?.TotalTokenCount ?? 0,
-                FinishReason = geminiResponse.Candidates?.FirstOrDefault()?.FinishReason
-            };
+            return CreateSuccessResponse(
+                textContent,
+                stopwatch.ElapsedMilliseconds,
+                Config.ModelName ?? DefaultModel,
+                totalTokens,
+                promptTokens,
+                completionTokens,
+                finishReason);
         }
         catch (Exception ex)
         {

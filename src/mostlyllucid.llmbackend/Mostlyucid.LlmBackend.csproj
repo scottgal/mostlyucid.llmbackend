@@ -8,11 +8,11 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
         <!-- Package Metadata -->
-        <PackageId>Mostlyucid.LlmBackend</PackageId>
-        <Version>2.1.0</Version>
+        <PackageId>mostlyucid.LlmBackend</PackageId>
+        <Version>0.0.1-rc1</Version>
         <Authors>Scott Galloway</Authors>
-        <Company>Mostlyucid</Company>
-        <Product>Mostlyucid LLM Backend</Product>
+        <Company>mostlyucid</Company>
+        <Product>mostlyucid LLM Backend</Product>
         <Description>Enterprise-grade abstraction library for multiple LLM backends with comprehensive features including failover, load balancing, circuit breakers, rate limiting, caching, and secrets management. Supports OpenAI, Azure OpenAI, Anthropic Claude, Google Gemini, Cohere, Ollama, LlamaCpp (with auto-download), and more. Now with local GGUF model support!</Description>
         <PackageTags>LLM;OpenAI;Azure;Anthropic;Claude;Gemini;Cohere;Ollama;LlamaCpp;GGUF;AI;ML;ChatGPT;GPT4;Backend;Failover;CircuitBreaker;RateLimiting;LocalLLM</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>

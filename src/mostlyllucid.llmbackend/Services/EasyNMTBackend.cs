@@ -107,15 +107,26 @@ public class EasyNMTBackend : BaseLlmBackend
             using var doc = JsonDocument.Parse(responseJson);
             var root = doc.RootElement;
 
-            // EasyNMT can return different response formats
+            // EasyNMT can return different response formats (object with "translation" or a plain JSON string)
             string translatedText;
-            if (root.TryGetProperty("translation", out var translationProp))
+            if (root.ValueKind == JsonValueKind.Object)
             {
-                translatedText = translationProp.GetString() ?? string.Empty;
+                if (root.TryGetProperty("translation", out var translationProp))
+                {
+                    translatedText = translationProp.GetString() ?? string.Empty;
+                }
+                else
+                {
+                    translatedText = string.Empty;
+                }
+            }
+            else if (root.ValueKind == JsonValueKind.String)
+            {
+                translatedText = root.GetString() ?? string.Empty;
             }
             else
             {
-                translatedText = root.GetString() ?? string.Empty;
+                translatedText = string.Empty;
             }
 
             stopwatch.Stop();

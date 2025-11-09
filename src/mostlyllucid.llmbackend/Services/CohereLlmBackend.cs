@@ -22,7 +22,8 @@ public class CohereLlmBackend : BaseLlmBackend
         HttpClient httpClient)
         : base(config, logger, httpClient)
     {
-        ConfigureHttpClient();
+        // Base constructor already calls ConfigureHttpClient via virtual dispatch.
+        // Avoid calling it twice to prevent duplicate headers.
     }
 
     /// <summary>
@@ -32,9 +33,13 @@ public class CohereLlmBackend : BaseLlmBackend
     {
         base.ConfigureHttpClient();
 
-        // Add Cohere API key header
+        // Add Cohere API key header idempotently
         if (!string.IsNullOrEmpty(Config.ApiKey))
         {
+            if (HttpClient.DefaultRequestHeaders.Contains("Authorization"))
+            {
+                HttpClient.DefaultRequestHeaders.Remove("Authorization");
+            }
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {Config.ApiKey}");
         }
     }

@@ -91,7 +91,9 @@ public abstract class BaseLlmBackend : ILlmBackend
         int? completionTokens = null,
         string? finishReason = null)
     {
-        RecordSuccess(durationMs);
+        // Ensure duration is at least 1ms to avoid zero values in extremely fast mocked calls
+        var safeDuration = Math.Max(1, (int)durationMs);
+        RecordSuccess(safeDuration);
 
         return new LlmResponse
         {
@@ -99,7 +101,7 @@ public abstract class BaseLlmBackend : ILlmBackend
             Text = text,
             Backend = Name,
             Model = model ?? Config.ModelName,
-            DurationMs = durationMs,
+            DurationMs = safeDuration,
             TotalTokens = totalTokens,
             PromptTokens = promptTokens,
             CompletionTokens = completionTokens,

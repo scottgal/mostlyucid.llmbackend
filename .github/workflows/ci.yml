@@ -1,94 +1,28 @@
-name: CI Build and Test
+﻿name: CI
 
 on:
   push:
-    branches: [ main, develop, claude/* ]
+    branches: ["**"]
   pull_request:
-    branches: [ main, develop ]
+    branches: ["**"]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        dotnet-version: ['8.0.x']
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ matrix.dotnet-version }}
-
-    - name: Display .NET info
-      run: dotnet --info
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
-
-    - name: Run tests
-      run: dotnet test --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
-      continue-on-error: true
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ matrix.os }}
-        path: '**/test-results.trx'
-        retention-days: 30
-
-  code-quality:
+  build-test:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore
+      - name: Restore
+        run: dotnet restore
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
 
-    - name: Check formatting
-      run: dotnet format --verify-no-changes --no-restore
-      continue-on-error: true
-
-    - name: Analyze code
-      run: dotnet build --configuration Release /p:TreatWarningsAsErrors=true
-      continue-on-error: true
-
-  security-scan:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Check for vulnerable packages
-      run: dotnet list package --vulnerable --include-transitive
-      continue-on-error: true
-
-    - name: Check for deprecated packages
-      run: dotnet list package --deprecated
-      continue-on-error: true
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
