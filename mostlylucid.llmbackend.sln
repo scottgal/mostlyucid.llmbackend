@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlyucid.LlmBackend", "src\mostlyllucid.llmbackend\Mostlyucid.LlmBackend.csproj", "{FFFE3821-37DD-4ACF-9258-624C2A4B3A1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlyucid.LlmBackend.Tests", "src\Mostlyucid.LlmBackend.Tests\Mostlyucid.LlmBackend.Tests.csproj", "{9ABFFC83-946F-45DA-838F-3360C692E093}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution", "Solution", "{4773AFA1-605B-41E2-AE34-76BBF182D721}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\ci.yml = .github\workflows\ci.yml
+		.github\workflows\nuget-publish.yml = .github\workflows\nuget-publish.yml
+		.gitignore = .gitignore
+		CHANGELOG.md = CHANGELOG.md
+		ICON-README.md = ICON-README.md
+		IMPORTANT-BEFORE-PUBLISH.txt = IMPORTANT-BEFORE-PUBLISH.txt
+		PUBLISHING.md = PUBLISHING.md
+		README.md = README.md
+		RELEASE-NOTES.md = RELEASE-NOTES.md
+		UNLICENSE = UNLICENSE
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FFFE3821-37DD-4ACF-9258-624C2A4B3A1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFFE3821-37DD-4ACF-9258-624C2A4B3A1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFFE3821-37DD-4ACF-9258-624C2A4B3A1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFFE3821-37DD-4ACF-9258-624C2A4B3A1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9ABFFC83-946F-45DA-838F-3360C692E093}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ABFFC83-946F-45DA-838F-3360C692E093}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ABFFC83-946F-45DA-838F-3360C692E093}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ABFFC83-946F-45DA-838F-3360C692E093}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
