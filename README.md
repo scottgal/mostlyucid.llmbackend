@@ -86,38 +86,132 @@ See [Plugin Development Guide](docs/PLUGIN-DEVELOPMENT.md) for complete document
 dotnet add package Mostlyucid.LlmBackend
 ```
 
-## Quick Start
+## 🚀 Quick Start - Minimal Setup
 
-### Basic Setup
+### Option 1: Zero Configuration (Code-Only)
+
+Get started in seconds with no config file required:
 
 ```csharp
 using Mostlyucid.LlmBackend.Configuration;
 using Mostlyucid.LlmBackend.DependencyInjection;
+using Mostlyucid.LlmBackend.Interfaces;
+using Mostlyucid.LlmBackend.Models;
 
-// In your Startup.cs or Program.cs
-builder.Services.AddLlmBackend(builder.Configuration);
+// In Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Register with inline configuration
+builder.Services.AddLlmBackend(settings =>
+{
+    settings.Backends = new List<LlmBackendConfig>
+    {
+        new()
+        {
+            Name = "OpenAI",
+            Type = LlmBackendType.OpenAI,
+            BaseUrl = "https://api.openai.com",
+            ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY"),
+            ModelName = "gpt-4o",
+            Enabled = true
+        }
+    };
+});
+
+var app = builder.Build();
+
+// Use it!
+app.MapGet("/ask", async (ILlmService llm, string question) =>
+{
+    var response = await llm.CompleteAsync(new LlmRequest { Prompt = question });
+    return response.Content;
+});
+
+app.Run();
 ```
 
-### Minimal Configuration (appsettings.json)
+Set your API key:
+```bash
+export OPENAI_API_KEY=sk-your-key-here
+dotnet run
+```
 
+Test it:
+```bash
+curl "http://localhost:5000/ask?question=What+is+2+2"
+```
+
+### Option 2: Absolute Minimum Config File
+
+**appsettings.json** (just 5 lines of configuration):
 ```json
 {
   "LlmSettings": {
     "Backends": [
       {
-        "Name": "OpenAI-GPT4",
+        "Name": "OpenAI",
         "Type": "OpenAI",
-        "BaseUrl": "https://api.openai.com",
-        "ApiKey": "your-api-key",
-        "ModelName": "gpt-4o",
-        "Enabled": true
+        "ApiKey": "sk-your-key-here",
+        "ModelName": "gpt-4o"
       }
     ]
   }
 }
 ```
 
-### Basic Usage
+**Program.cs**:
+```csharp
+builder.Services.AddLlmBackend(builder.Configuration);
+
+app.MapGet("/ask", async (ILlmService llm, string question) =>
+{
+    var response = await llm.CompleteAsync(new LlmRequest { Prompt = question });
+    return response.Content;
+});
+```
+
+That's it! The library uses sensible defaults for everything else:
+- ✅ BaseUrl auto-set to `https://api.openai.com`
+- ✅ Temperature defaults to 0.7
+- ✅ Max tokens defaults to 2000
+- ✅ Automatic retry with exponential backoff
+- ✅ 120-second timeout
+- ✅ Circuit breaker enabled
+
+### Option 3: With Local Ollama (Completely Free!)
+
+No API key needed for local models:
+
+**appsettings.json**:
+```json
+{
+  "LlmSettings": {
+    "Backends": [
+      {
+        "Name": "Ollama",
+        "Type": "Ollama",
+        "BaseUrl": "http://localhost:11434",
+        "ModelName": "llama3"
+      }
+    ]
+  }
+}
+```
+
+**Setup**:
+```bash
+# Install Ollama
+curl https://ollama.ai/install.sh | sh
+
+# Pull a model
+ollama pull llama3
+
+# Start using it!
+dotnet run
+curl "http://localhost:5000/ask?question=Hello"
+```
+
+### Full Example with Chat
 
 ```csharp
 using Mostlyucid.LlmBackend.Interfaces;
@@ -132,6 +226,7 @@ public class MyService
         _llmService = llmService;
     }
 
+    // Simple completion
     public async Task<string> AskQuestionAsync(string question)
     {
         var request = new LlmRequest
@@ -145,6 +240,7 @@ public class MyService
         return response.Content;
     }
 
+    // Chat with conversation history
     public async Task<string> ChatAsync(List<ChatMessage> messages)
     {
         var request = new ChatRequest
@@ -158,6 +254,38 @@ public class MyService
     }
 }
 ```
+
+**Usage**:
+```csharp
+// Inject the service
+public class HomeController
+{
+    private readonly MyService _myService;
+
+    public HomeController(MyService myService) => _myService = myService;
+
+    // Simple question
+    var answer = await _myService.AskQuestionAsync("What is the meaning of life?");
+
+    // Chat conversation
+    var messages = new List<ChatMessage>
+    {
+        new() { Role = "system", Content = "You are a helpful assistant" },
+        new() { Role = "user", Content = "What is the capital of France?" }
+    };
+    var response = await _myService.ChatAsync(messages);
+}
+```
+
+### Next Steps
+
+- 📚 **Add failover**: Configure multiple backends for reliability
+- 🔒 **Secure your keys**: Use environment variables or Azure Key Vault
+- 📊 **Monitor usage**: Enable Prometheus metrics (see [Metrics Guide](docs/METRICS-AND-MONITORING.md))
+- 🧪 **Add tests**: Use the testing fakes (see [Testing Guide](docs/TESTING-GUIDE.md))
+- ⚡ **Optimize costs**: Enable caching and configure cheaper backup models
+
+See [Advanced Configuration](#advanced-configuration) below for all available options.
 
 ## Advanced Configuration
 
