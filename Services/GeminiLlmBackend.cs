@@ -142,8 +142,7 @@ public class GeminiLlmBackend : BaseLlmBackend
                     response.StatusCode,
                     errorContent);
 
-                RecordFailure(errorContent);
-                return CreateErrorResponse(response.StatusCode.ToString(), errorContent);
+                return CreateErrorResponse($"Gemini request failed with status {response.StatusCode}: {errorContent}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -151,8 +150,7 @@ public class GeminiLlmBackend : BaseLlmBackend
 
             if (geminiResponse == null)
             {
-                RecordFailure("Failed to deserialize response");
-                return CreateErrorResponse("DeserializationError", "Failed to parse Gemini response");
+                return CreateErrorResponse("Failed to deserialize Gemini response");
             }
 
             var textContent = geminiResponse.Candidates?
@@ -181,8 +179,7 @@ public class GeminiLlmBackend : BaseLlmBackend
         {
             stopwatch.Stop();
             Logger.LogError(ex, "Error calling Gemini backend {BackendName}", Name);
-            RecordFailure(ex.Message);
-            return CreateErrorResponse("Exception", ex.Message);
+            return CreateErrorResponse($"Error calling Gemini: {ex.Message}", ex);
         }
     }
 

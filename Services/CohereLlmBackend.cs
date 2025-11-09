@@ -71,7 +71,7 @@ public class CohereLlmBackend : BaseLlmBackend
                 p = request.TopP ?? Config.TopP,
                 frequency_penalty = request.FrequencyPenalty ?? Config.FrequencyPenalty,
                 presence_penalty = request.PresencePenalty ?? Config.PresencePenalty,
-                stop_sequences = request.Stop ?? Config.StopSequences,
+                stop_sequences = request.StopSequences ?? Config.StopSequences,
                 stream = request.Stream && Config.EnableStreaming
             };
 
@@ -93,8 +93,7 @@ public class CohereLlmBackend : BaseLlmBackend
                     response.StatusCode,
                     errorContent);
 
-                RecordFailure(errorContent);
-                return CreateErrorResponse(response.StatusCode.ToString(), errorContent);
+                return CreateErrorResponse($"Cohere request failed with status {response.StatusCode}: {errorContent}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -102,8 +101,7 @@ public class CohereLlmBackend : BaseLlmBackend
 
             if (cohereResponse == null)
             {
-                RecordFailure("Failed to deserialize response");
-                return CreateErrorResponse("DeserializationError", "Failed to parse Cohere response");
+                return CreateErrorResponse("Failed to deserialize Cohere response");
             }
 
             RecordSuccess(stopwatch.ElapsedMilliseconds);
@@ -126,8 +124,7 @@ public class CohereLlmBackend : BaseLlmBackend
         {
             stopwatch.Stop();
             Logger.LogError(ex, "Error calling Cohere backend {BackendName}", Name);
-            RecordFailure(ex.Message);
-            return CreateErrorResponse("Exception", ex.Message);
+            return CreateErrorResponse($"Error calling Cohere: {ex.Message}", ex);
         }
     }
 
@@ -152,7 +149,7 @@ public class CohereLlmBackend : BaseLlmBackend
             var lastMessage = request.Messages.LastOrDefault();
             if (lastMessage == null)
             {
-                return CreateErrorResponse("InvalidRequest", "No messages provided");
+                return CreateErrorResponse("No messages provided in chat request");
             }
 
             var cohereRequest = new
@@ -165,7 +162,7 @@ public class CohereLlmBackend : BaseLlmBackend
                 p = request.TopP ?? Config.TopP,
                 frequency_penalty = request.FrequencyPenalty ?? Config.FrequencyPenalty,
                 presence_penalty = request.PresencePenalty ?? Config.PresencePenalty,
-                stop_sequences = request.Stop ?? Config.StopSequences,
+                stop_sequences = request.StopSequences ?? Config.StopSequences,
                 stream = request.Stream && Config.EnableStreaming
             };
 
@@ -187,8 +184,7 @@ public class CohereLlmBackend : BaseLlmBackend
                     response.StatusCode,
                     errorContent);
 
-                RecordFailure(errorContent);
-                return CreateErrorResponse(response.StatusCode.ToString(), errorContent);
+                return CreateErrorResponse($"Cohere chat request failed with status {response.StatusCode}: {errorContent}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -196,8 +192,7 @@ public class CohereLlmBackend : BaseLlmBackend
 
             if (cohereResponse == null)
             {
-                RecordFailure("Failed to deserialize response");
-                return CreateErrorResponse("DeserializationError", "Failed to parse Cohere response");
+                return CreateErrorResponse("Failed to deserialize Cohere chat response");
             }
 
             RecordSuccess(stopwatch.ElapsedMilliseconds);
@@ -220,8 +215,7 @@ public class CohereLlmBackend : BaseLlmBackend
         {
             stopwatch.Stop();
             Logger.LogError(ex, "Error calling Cohere chat backend {BackendName}", Name);
-            RecordFailure(ex.Message);
-            return CreateErrorResponse("Exception", ex.Message);
+            return CreateErrorResponse($"Error calling Cohere chat: {ex.Message}", ex);
         }
     }
 

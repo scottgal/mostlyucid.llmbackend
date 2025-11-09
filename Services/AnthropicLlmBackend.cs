@@ -151,8 +151,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
                     response.StatusCode,
                     errorContent);
 
-                RecordFailure(errorContent);
-                return CreateErrorResponse(response.StatusCode.ToString(), errorContent);
+                return CreateErrorResponse($"Anthropic request failed with status {response.StatusCode}: {errorContent}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -160,8 +159,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
 
             if (anthropicResponse == null)
             {
-                RecordFailure("Failed to deserialize response");
-                return CreateErrorResponse("DeserializationError", "Failed to parse Anthropic response");
+                return CreateErrorResponse("Failed to deserialize Anthropic response");
             }
 
             RecordSuccess(stopwatch.ElapsedMilliseconds);
@@ -183,8 +181,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
         {
             stopwatch.Stop();
             Logger.LogError(ex, "Error calling Anthropic backend {BackendName}", Name);
-            RecordFailure(ex.Message);
-            return CreateErrorResponse("Exception", ex.Message);
+            return CreateErrorResponse($"Error calling Anthropic: {ex.Message}", ex);
         }
     }
 
