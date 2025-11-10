@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Mostlyucid.LlmBackend.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend\Mostlyucid.LlmBackend.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.OpenAI\Mostlyucid.LlmBackend.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.Ollama\Mostlyucid.LlmBackend.Providers.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.Anthropic\Mostlyucid.LlmBackend.Providers.Anthropic.csproj" />
   </ItemGroup>
 
 </Project>

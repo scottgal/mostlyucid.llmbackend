@@ -5,6 +5,16 @@ A robust, production-ready abstraction library for multiple LLM backends with en
 [![NuGet](https://img.shields.io/nuget/v/Mostlyucid.LlmBackend.svg)](https://www.nuget.org/packages/Mostlyucid.LlmBackend/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## 🎯 What's New in v3.0.0
+
+**Modular Architecture** - Providers are now separate NuGet packages! This brings:
+- **Smaller Core Package** - Only ~50KB, down from 200KB+
+- **Install Only What You Need** - Pick specific providers (OpenAI, Claude, Gemini, etc.)
+- **Independent Updates** - Providers can be updated without touching core
+- **Better Separation** - Each provider is its own project with minimal dependencies
+
+**Breaking Change**: Upgrading from v2.x requires installing provider packages separately. See [Installation](#installation) below.
+
 ## Features
 
 ### Supported LLM Providers
@@ -84,9 +94,52 @@ See [Plugin Development Guide](docs/PLUGIN-DEVELOPMENT.md) for complete document
 
 ## Installation
 
+Starting with v3.0.0, the library uses a modular architecture. Install the core package plus the provider packages you need:
+
+### Core Package (Required)
+
 ```bash
 dotnet add package Mostlyucid.LlmBackend
 ```
+
+### Provider Packages (Install as Needed)
+
+```bash
+# OpenAI (GPT-4, GPT-3.5-turbo)
+dotnet add package Mostlyucid.LlmBackend.Providers.OpenAI
+
+# Azure OpenAI
+dotnet add package Mostlyucid.LlmBackend.Providers.AzureOpenAI
+
+# Anthropic Claude
+dotnet add package Mostlyucid.LlmBackend.Providers.Anthropic
+
+# Google Gemini
+dotnet add package Mostlyucid.LlmBackend.Providers.Gemini
+
+# Cohere
+dotnet add package Mostlyucid.LlmBackend.Providers.Cohere
+
+# Ollama (Local Models)
+dotnet add package Mostlyucid.LlmBackend.Providers.Ollama
+
+# EasyNMT (Translation)
+dotnet add package Mostlyucid.LlmBackend.Providers.EasyNMT
+```
+
+**Example**: For a project using OpenAI and Ollama:
+```bash
+dotnet add package Mostlyucid.LlmBackend
+dotnet add package Mostlyucid.LlmBackend.Providers.OpenAI
+dotnet add package Mostlyucid.LlmBackend.Providers.Ollama
+```
+
+This modular approach:
+- ✅ Reduces dependencies (only install what you use)
+- ✅ Smaller package sizes
+- ✅ Faster restore times
+- ✅ Better separation of concerns
+- ✅ Independent provider versioning
 
 ## 🚀 Quick Start - Minimal Setup
 

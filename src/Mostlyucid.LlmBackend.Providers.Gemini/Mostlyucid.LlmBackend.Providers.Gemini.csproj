@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Package Metadata -->
+        <PackageId>Mostlyucid.LlmBackend.Providers.Gemini</PackageId>
+        <Version>3.0.0</Version>
+        <Authors>Scott Galloway</Authors>
+        <Company>Mostlyucid</Company>
+        <Product>Mostlyucid LLM Backend - Google Gemini Provider</Product>
+        <Description>Google Gemini provider for Mostlyucid.LlmBackend. Supports Gemini Pro, Gemini Pro Vision, and other Google AI models. Works with both AI Studio and Vertex AI. Requires the core Mostlyucid.LlmBackend package.</Description>
+        <PackageTags>LLM;Google;Gemini;GeminiPro;AI;Provider;VertexAI</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/scottgal/mostlyucid.llmbackend</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/scottgal/mostlyucid.llmbackend</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <!-- Release Notes -->
+        <PackageReleaseNotes>
+v3.0.0 - Initial release as separate provider package
+- Gemini Pro and Gemini Pro Vision support
+- AI Studio and Vertex AI endpoint support
+- Streaming support
+- Project and location configuration
+        </PackageReleaseNotes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Mostlyucid.LlmBackend\Mostlyucid.LlmBackend.csproj" />
+    </ItemGroup>
+
+</Project>
