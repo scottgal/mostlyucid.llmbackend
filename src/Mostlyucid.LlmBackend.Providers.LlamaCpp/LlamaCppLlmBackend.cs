@@ -97,7 +97,7 @@ public class LlamaCppLlmBackend : BaseLlmBackend
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
 
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await HttpClient.PostAsync("completion", content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -141,6 +141,21 @@ public class LlamaCppLlmBackend : BaseLlmBackend
                 totalTokens,
                 promptTokens,
                 completionTokens);
+        }
+        catch (HttpRequestException ex)
+        {
+            stopwatch.Stop();
+            return CreateErrorResponse($"LlamaCpp HTTP request failed: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            stopwatch.Stop();
+            return CreateErrorResponse("LlamaCpp request timed out or was cancelled", ex);
+        }
+        catch (JsonException ex)
+        {
+            stopwatch.Stop();
+            return CreateErrorResponse($"Failed to parse LlamaCpp response: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
@@ -187,7 +202,7 @@ public class LlamaCppLlmBackend : BaseLlmBackend
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
 
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Use OpenAI-compatible endpoint
             var response = await HttpClient.PostAsync("v1/chat/completions", content, cancellationToken);
@@ -225,10 +240,11 @@ public class LlamaCppLlmBackend : BaseLlmBackend
                     completionTokens = completionElem.GetInt32();
             }
 
-            if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+            if (root.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0 &&
+                choices[0].TryGetProperty("finish_reason", out var finishElem))
             {
-                if (choices[0].TryGetProperty("finish_reason", out var finishElem))
-                    finishReason = finishElem.GetString();
+                finishReason = finishElem.GetString();
             }
 
             stopwatch.Stop();
@@ -241,6 +257,21 @@ public class LlamaCppLlmBackend : BaseLlmBackend
                 promptTokens,
                 completionTokens,
                 finishReason);
+        }
+        catch (HttpRequestException ex)
+        {
+            stopwatch.Stop();
+            return CreateErrorResponse($"LlamaCpp HTTP request failed: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            stopwatch.Stop();
+            return CreateErrorResponse("LlamaCpp request timed out or was cancelled", ex);
+        }
+        catch (JsonException ex)
+        {
+            stopwatch.Stop();
+            return CreateErrorResponse($"Failed to parse LlamaCpp response: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
@@ -320,7 +351,7 @@ public class LlamaCppLlmBackend : BaseLlmBackend
                 int bytesRead;
                 var lastLogTime = DateTime.UtcNow;
 
-                while ((bytesRead = await contentStream.ReadAsync(buffer, cancellationToken)) > 0)
+                while ((bytesRead = await contentStream.ReadAsync(buffer.AsMemory(), cancellationToken)) > 0)
                 {
                     await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
                     totalBytesRead += bytesRead;
@@ -353,12 +384,91 @@ public class LlamaCppLlmBackend : BaseLlmBackend
 
                 _modelDownloaded = true;
             }
+            catch (HttpRequestException ex)
+            {
+                // Clean up temp file on error
+                if (File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        Logger.LogWarning(cleanupEx, "[{BackendName}] Failed to delete temporary file {TempPath}", Name, tempPath);
+                    }
+                }
+
+                Logger.LogError(ex, "[{BackendName}] HTTP error while downloading model from {ModelUrl}", Name, Config.ModelUrl);
+                throw;
+            }
+            catch (TaskCanceledException ex)
+            {
+                // Clean up temp file on error
+                if (File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        Logger.LogWarning(cleanupEx, "[{BackendName}] Failed to delete temporary file {TempPath}", Name, tempPath);
+                    }
+                }
+
+                Logger.LogError(ex, "[{BackendName}] Model download timed out or was cancelled from {ModelUrl}", Name, Config.ModelUrl);
+                throw;
+            }
+            catch (IOException ex)
+            {
+                // Clean up temp file on error
+                if (File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        Logger.LogWarning(cleanupEx, "[{BackendName}] Failed to delete temporary file {TempPath}", Name, tempPath);
+                    }
+                }
+
+                Logger.LogError(ex, "[{BackendName}] File I/O error while downloading model from {ModelUrl}", Name, Config.ModelUrl);
+                throw;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // Clean up temp file on error
+                if (File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        Logger.LogWarning(cleanupEx, "[{BackendName}] Failed to delete temporary file {TempPath}", Name, tempPath);
+                    }
+                }
+
+                Logger.LogError(ex, "[{BackendName}] Access denied while downloading model to {ModelPath}", Name, Config.ModelPath);
+                throw;
+            }
             catch (Exception ex)
             {
                 // Clean up temp file on error
                 if (File.Exists(tempPath))
                 {
-                    try { File.Delete(tempPath); } catch { /* Ignore cleanup errors */ }
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        Logger.LogWarning(cleanupEx, "[{BackendName}] Failed to delete temporary file {TempPath}", Name, tempPath);
+                    }
                 }
 
                 Logger.LogError(ex, "[{BackendName}] Failed to download model from {ModelUrl}", Name, Config.ModelUrl);
