@@ -62,13 +62,13 @@ public class GeminiLlmBackend : BaseLlmBackend
             var json = JsonSerializer.Serialize(testRequest);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
+            var response = await HttpClient.PostAsync(endpoint, content, cancellationToken);
 
             return response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.BadRequest;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Gemini backend {BackendName} is not available", Name);
+            Logger.LogWarning(ex, "Gemini backend {BackendName} is not available", Name);
             return false;
         }
     }
@@ -118,10 +118,10 @@ public class GeminiLlmBackend : BaseLlmBackend
                 contents = contents,
                 generationConfig = new
                 {
-                    temperature = request.Temperature ?? _config.Temperature ?? 0.7,
-                    topP = request.TopP ?? _config.TopP,
-                    maxOutputTokens = request.MaxTokens ?? _config.MaxOutputTokens ?? 2000,
-                    stopSequences = request.Stop ?? _config.StopSequences
+                    temperature = request.Temperature ?? Config.Temperature ?? 0.7,
+                    topP = request.TopP ?? Config.TopP,
+                    maxOutputTokens = request.MaxTokens ?? Config.MaxOutputTokens ?? 2000,
+                    stopSequences = request.Stop ?? Config.StopSequences
                 }
             };
 
@@ -131,14 +131,14 @@ public class GeminiLlmBackend : BaseLlmBackend
             });
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
+            var response = await HttpClient.PostAsync(endpoint, content, cancellationToken);
 
             stopwatch.Stop();
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError(
+                Logger.LogError(
                     "Gemini request failed with status {StatusCode}: {Error}",
                     response.StatusCode,
                     errorContent);
@@ -171,7 +171,7 @@ public class GeminiLlmBackend : BaseLlmBackend
                 BackendUsed = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = _config.ModelName ?? DefaultModel,
+                ModelUsed = Config.ModelName ?? DefaultModel,
                 PromptTokens = geminiResponse.UsageMetadata?.PromptTokenCount ?? 0,
                 CompletionTokens = geminiResponse.UsageMetadata?.CandidatesTokenCount ?? 0,
                 TotalTokens = geminiResponse.UsageMetadata?.TotalTokenCount ?? 0,
@@ -181,7 +181,7 @@ public class GeminiLlmBackend : BaseLlmBackend
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Error calling Gemini backend {BackendName}", Name);
+            Logger.LogError(ex, "Error calling Gemini backend {BackendName}", Name);
             RecordFailure(ex.Message);
             return CreateErrorResponse("Exception", ex.Message);
         }
@@ -192,14 +192,14 @@ public class GeminiLlmBackend : BaseLlmBackend
     /// </summary>
     private string BuildEndpoint(string action)
     {
-        var model = _config.ModelName ?? DefaultModel;
-        var apiKey = _config.ApiKey;
+        var model = Config.ModelName ?? DefaultModel;
+        var apiKey = Config.ApiKey;
 
         // For Vertex AI (GCP), use different URL structure
-        if (!string.IsNullOrEmpty(_config.ProjectId))
+        if (!string.IsNullOrEmpty(Config.ProjectId))
         {
-            var location = _config.Location ?? DefaultLocation;
-            var projectId = _config.ProjectId;
+            var location = Config.Location ?? DefaultLocation;
+            var projectId = Config.ProjectId;
             return $"/v1/projects/{projectId}/locations/{location}/publishers/google/models/{model}:{action}";
         }
 

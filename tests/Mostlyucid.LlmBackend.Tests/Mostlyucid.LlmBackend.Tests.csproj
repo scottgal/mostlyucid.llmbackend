@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend\Mostlyucid.LlmBackend.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.OpenAI\Mostlyucid.LlmBackend.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.Anthropic\Mostlyucid.LlmBackend.Providers.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.Gemini\Mostlyucid.LlmBackend.Providers.Gemini.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.Cohere\Mostlyucid.LlmBackend.Providers.Cohere.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.Ollama\Mostlyucid.LlmBackend.Providers.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.AzureOpenAI\Mostlyucid.LlmBackend.Providers.AzureOpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Mostlyucid.LlmBackend.Providers.EasyNMT\Mostlyucid.LlmBackend.Providers.EasyNMT.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
