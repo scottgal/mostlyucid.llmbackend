@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlyucid.LlmBackend.Provi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlyucid.LlmBackend.Providers.EasyNMT", "src\Mostlyucid.LlmBackend.Providers.EasyNMT\Mostlyucid.LlmBackend.Providers.EasyNMT.csproj", "{00000000-0000-0000-0000-000000000008}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlyucid.LlmBackend.Providers.LlamaCpp", "src\Mostlyucid.LlmBackend.Providers.LlamaCpp\Mostlyucid.LlmBackend.Providers.LlamaCpp.csproj", "{00000000-0000-0000-0000-000000000009}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{00000000-0000-0000-0000-000000000100}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "01-SimpleTranslator", "examples\01-SimpleTranslator\01-SimpleTranslator.csproj", "{00000000-0000-0000-0000-000000000101}"
@@ -69,6 +71,10 @@ Global
 		{00000000-0000-0000-0000-000000000008}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000008}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00000000-0000-0000-0000-000000000008}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00000000-0000-0000-0000-000000000009}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000009}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000009}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00000000-0000-0000-0000-000000000009}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00000000-0000-0000-0000-000000000101}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000101}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000101}.Release|Any CPU.ActiveCfg = Release|Any CPU

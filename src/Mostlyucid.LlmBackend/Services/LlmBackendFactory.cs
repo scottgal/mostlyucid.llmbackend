@@ -96,6 +96,13 @@ public class LlmBackendFactory
                     httpClient,
                     _telemetry),
 
+            LlmBackendType.LlamaCpp =>
+                new LlamaCppLlmBackend(
+                    config,
+                    _loggerFactory.CreateLogger<LlamaCppLlmBackend>(),
+                    httpClient,
+                    _telemetry),
+
             _ => throw new NotSupportedException($"Backend type {config.Type} is not supported. " +
                 $"If this is a plugin backend, ensure CustomBackendType is set and the plugin is loaded.")
         };
