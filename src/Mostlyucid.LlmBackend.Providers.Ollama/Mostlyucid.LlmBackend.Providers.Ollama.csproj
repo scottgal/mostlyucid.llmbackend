@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Package Metadata -->
+        <PackageId>Mostlyucid.LlmBackend.Providers.Ollama</PackageId>
+        <Version>3.0.0</Version>
+        <Authors>Scott Galloway</Authors>
+        <Company>Mostlyucid</Company>
+        <Product>Mostlyucid LLM Backend - Ollama Provider</Product>
+        <Description>Ollama provider for Mostlyucid.LlmBackend. Supports locally-hosted models via Ollama and LM Studio. Requires the core Mostlyucid.LlmBackend package.</Description>
+        <PackageTags>LLM;Ollama;Local;LMStudio;Llama;Mistral;AI;Provider</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/scottgal/mostlyucid.llmbackend</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/scottgal/mostlyucid.llmbackend</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <!-- Release Notes -->
+        <PackageReleaseNotes>
+v3.0.0 - Initial release as separate provider package
+- Ollama local model support
+- LM Studio compatibility
+- Streaming support
+- Works with any Ollama-compatible model
+        </PackageReleaseNotes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Mostlyucid.LlmBackend\Mostlyucid.LlmBackend.csproj" />
+    </ItemGroup>
+
+</Project>

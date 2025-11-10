@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Package Metadata -->
+        <PackageId>Mostlyucid.LlmBackend</PackageId>
+        <Version>3.0.0</Version>
+        <Authors>Scott Galloway</Authors>
+        <Company>Mostlyucid</Company>
+        <Product>Mostlyucid LLM Backend Core</Product>
+        <Description>Core abstraction library for multiple LLM backends with comprehensive features including failover, load balancing, circuit breakers, rate limiting, caching, and secrets management. This is the core package - install provider packages separately (e.g., Mostlyucid.LlmBackend.Providers.OpenAI).</Description>
+        <PackageTags>LLM;AI;ML;Backend;Failover;CircuitBreaker;RateLimiting;Core;Abstraction</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/scottgal/mostlyucid.llmbackend</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/scottgal/mostlyucid.llmbackend</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <!-- Release Notes -->
+        <PackageReleaseNotes>
+v3.0.0 - Breaking Change: Modular Architecture
+- Split providers into separate NuGet packages
+- Core package now contains only abstractions and orchestration
+- Install provider packages separately as needed
+- Reduced dependencies and package size
+- Better separation of concerns
+- Easier to maintain and extend
+        </PackageReleaseNotes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+        <PackageReference Include="Polly" Version="8.4.2" />
+        <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+        <PackageReference Include="prometheus-net" Version="8.2.1" />
+        <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Package Metadata -->
+        <PackageId>Mostlyucid.LlmBackend.Providers.AzureOpenAI</PackageId>
+        <Version>3.0.0</Version>
+        <Authors>Scott Galloway</Authors>
+        <Company>Mostlyucid</Company>
+        <Product>Mostlyucid LLM Backend - Azure OpenAI Provider</Product>
+        <Description>Azure OpenAI provider for Mostlyucid.LlmBackend. Supports Azure-hosted GPT-4, GPT-3.5-turbo, and other OpenAI models with deployment names and API versioning. Requires the core Mostlyucid.LlmBackend package.</Description>
+        <PackageTags>LLM;Azure;OpenAI;GPT4;GPT-3.5;ChatGPT;AI;Provider;AzureOpenAI</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/scottgal/mostlyucid.llmbackend</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/scottgal/mostlyucid.llmbackend</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <!-- Release Notes -->
+        <PackageReleaseNotes>
+v3.0.0 - Initial release as separate provider package
+- Azure OpenAI GPT-4, GPT-3.5-turbo support
+- Deployment name support
+- API version management
+- Streaming support
+- Extends OpenAI provider functionality
+        </PackageReleaseNotes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Mostlyucid.LlmBackend\Mostlyucid.LlmBackend.csproj" />
+    </ItemGroup>
+
+</Project>
