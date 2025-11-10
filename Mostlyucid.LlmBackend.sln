@@ -27,6 +27,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "02-ChatInterface", "example
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "03-SciFiStoryWriter", "examples\03-SciFiStoryWriter\03-SciFiStoryWriter.csproj", "{00000000-0000-0000-0000-000000000103}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{00000000-0000-0000-0000-000000000200}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlyucid.LlmBackend.Tests", "tests\Mostlyucid.LlmBackend.Tests\Mostlyucid.LlmBackend.Tests.csproj", "{00000000-0000-0000-0000-000000000201}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,10 +81,15 @@ Global
 		{00000000-0000-0000-0000-000000000103}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000103}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00000000-0000-0000-0000-000000000103}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00000000-0000-0000-0000-000000000201}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000201}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000201}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00000000-0000-0000-0000-000000000201}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{00000000-0000-0000-0000-000000000101} = {00000000-0000-0000-0000-000000000100}
 		{00000000-0000-0000-0000-000000000102} = {00000000-0000-0000-0000-000000000100}
 		{00000000-0000-0000-0000-000000000103} = {00000000-0000-0000-0000-000000000100}
+		{00000000-0000-0000-0000-000000000201} = {00000000-0000-0000-0000-000000000200}
 	EndGlobalSection
 EndGlobal

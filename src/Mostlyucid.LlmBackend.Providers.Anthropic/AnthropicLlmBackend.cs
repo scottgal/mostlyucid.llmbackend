@@ -35,14 +35,14 @@ public class AnthropicLlmBackend : BaseLlmBackend
         base.ConfigureHttpClient();
 
         // Add Anthropic API key header
-        if (!string.IsNullOrEmpty(_config.ApiKey))
+        if (!string.IsNullOrEmpty(Config.ApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("x-api-key", _config.ApiKey);
+            HttpClient.DefaultRequestHeaders.Add("x-api-key", Config.ApiKey);
         }
 
         // Add Anthropic version header
-        var version = _config.AnthropicVersion ?? DefaultAnthropicVersion;
-        _httpClient.DefaultRequestHeaders.Add("anthropic-version", version);
+        var version = Config.AnthropicVersion ?? DefaultAnthropicVersion;
+        HttpClient.DefaultRequestHeaders.Add("anthropic-version", version);
     }
 
     public override async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
@@ -52,7 +52,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
             // Anthropic doesn't have a dedicated health endpoint, so we'll try a minimal request
             var testRequest = new
             {
-                model = _config.ModelName ?? DefaultModel,
+                model = Config.ModelName ?? DefaultModel,
                 messages = new[]
                 {
                     new { role = "user", content = "Hi" }
@@ -63,14 +63,14 @@ public class AnthropicLlmBackend : BaseLlmBackend
             var json = JsonSerializer.Serialize(testRequest);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync("/v1/messages", content, cancellationToken);
+            var response = await HttpClient.PostAsync("/v1/messages", content, cancellationToken);
 
             // Consider both success and certain error codes as "available"
             return response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.BadRequest;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Anthropic backend {BackendName} is not available", Name);
+            Logger.LogWarning(ex, "Anthropic backend {BackendName} is not available", Name);
             return false;
         }
     }
@@ -125,14 +125,14 @@ public class AnthropicLlmBackend : BaseLlmBackend
 
             var anthropicRequest = new
             {
-                model = _config.ModelName ?? DefaultModel,
+                model = Config.ModelName ?? DefaultModel,
                 messages = messages,
                 system = systemMessage, // System message sent separately in Anthropic API
-                max_tokens = request.MaxTokens ?? _config.MaxOutputTokens ?? 2000,
-                temperature = request.Temperature ?? _config.Temperature ?? 0.7,
-                top_p = request.TopP ?? _config.TopP,
-                stop_sequences = request.Stop ?? _config.StopSequences,
-                stream = request.Stream && _config.EnableStreaming
+                max_tokens = request.MaxTokens ?? Config.MaxOutputTokens ?? 2000,
+                temperature = request.Temperature ?? Config.Temperature ?? 0.7,
+                top_p = request.TopP ?? Config.TopP,
+                stop_sequences = request.Stop ?? Config.StopSequences,
+                stream = request.Stream && Config.EnableStreaming
             };
 
             var json = JsonSerializer.Serialize(anthropicRequest, new JsonSerializerOptions
@@ -141,14 +141,14 @@ public class AnthropicLlmBackend : BaseLlmBackend
             });
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync("/v1/messages", content, cancellationToken);
+            var response = await HttpClient.PostAsync("/v1/messages", content, cancellationToken);
 
             stopwatch.Stop();
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError(
+                Logger.LogError(
                     "Anthropic request failed with status {StatusCode}: {Error}",
                     response.StatusCode,
                     errorContent);
@@ -174,7 +174,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
                 BackendUsed = Name,
                 Success = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
-                ModelUsed = _config.ModelName ?? DefaultModel,
+                ModelUsed = Config.ModelName ?? DefaultModel,
                 PromptTokens = anthropicResponse.Usage?.InputTokens ?? 0,
                 CompletionTokens = anthropicResponse.Usage?.OutputTokens ?? 0,
                 TotalTokens = (anthropicResponse.Usage?.InputTokens ?? 0) + (anthropicResponse.Usage?.OutputTokens ?? 0),
@@ -184,7 +184,7 @@ public class AnthropicLlmBackend : BaseLlmBackend
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Error calling Anthropic backend {BackendName}", Name);
+            Logger.LogError(ex, "Error calling Anthropic backend {BackendName}", Name);
             RecordFailure(ex.Message);
             return CreateErrorResponse("Exception", ex.Message);
         }
